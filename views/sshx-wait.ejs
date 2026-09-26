@@ -1,0 +1,18 @@
+<%- include('partials/header', { headExtra: (giveUp || cancelled) ? '' : '<meta http-equiv="refresh" content="3;url=/vms/' + vm.id + '/sshx?w=' + (tries + 1) + '">' }) %>
+<div class="page-head"><div><h1><%= vm.name %> SSHX terminal</h1></div></div>
+<div class="panel" role="status">
+  <% if (cancelled) { %>
+    <p><strong>This SSHX session was cancelled.</strong></p>
+    <p class="muted">The link you had has been retired. Start a new session to get a fresh one.</p>
+    <form method="post" action="/vms/<%= vm.id %>/sshx/start"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn go" type="submit">Start SSHX</button></form>
+  <% } else if (!giveUp) { %>
+    <p><strong>Waiting for the terminal to come up...</strong></p>
+    <p class="muted">This tab opens the terminal by itself as soon as the VM reports it. A freshly created VM needs a minute or two on its first boot to install SSHX.</p>
+  <% } else { %>
+    <p><strong>The VM has not reported an SSHX link yet.</strong></p>
+    <p class="muted">Check the boot log on the VM page for errors. The VM needs outbound internet access, and the login user must exist. SSHX is set up by cloud-init on the first boot only.</p>
+    <a class="btn" href="/vms/<%= vm.id %>/sshx">Try again</a>
+  <% } %>
+  <a class="btn" href="/vms/<%= vm.id %>">Back to VM</a>
+</div>
+<%- include('partials/footer', { scripts: [] }) %>

@@ -1,0 +1,98 @@
+<%- include('partials/header') %>
+<% if (user.banner_image) { %><div class="profile-banner" style="background-image:url('<%= user.banner_image %>')"></div><% } %>
+<div class="page-head"><div><h1>Profile and API keys</h1></div></div>
+
+<% if (user.must_change_password) { %>
+<div class="note warn" role="alert">
+  <strong>Set a new password to finish signing in.</strong>
+  <p class="small" style="margin:.35rem 0 0">This account is still using the default password. Choose a new one below to unlock the rest of the panel.</p>
+</div>
+<% } %>
+
+<% if (newKey) { %>
+<div class="note ok" role="status">
+  <strong>Copy your new API key now. It is shown only once.</strong>
+  <div class="keybox" style="margin-top:.5rem"><%= newKey %></div>
+</div>
+<% } %>
+
+<div class="grid two">
+  <div>
+    <form class="panel" method="post" action="/profile/details" enctype="multipart/form-data">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <h2>Account</h2>
+      <dl class="spec" style="margin-bottom:1rem"><dt>Your ID</dt><dd class="mono">#<%= user.id %></dd><dt>Username</dt><dd><%= user.username %></dd><dt>Role</dt><dd><%= user.role === 'admin' ? 'Administrator' : 'User' %></dd><dt>VM limit</dt><dd><%= user.max_vms %></dd></dl>
+      <div class="field"><label for="email">Email</label><input id="email" type="email" name="email" value="<%= user.email || '' %>"></div>
+
+      <h3 style="margin:1rem 0 .4rem">Your logo</h3>
+      <p class="small muted" style="margin:0 0 .5rem">Shown beside your name in the header. Upload an image or paste a URL.</p>
+      <% if (user.logo_image) { %><p style="margin:0 0 .5rem"><span class="small muted">Current:</span> <img src="<%= user.logo_image %>" alt="Your logo" style="max-height:40px;max-width:160px;vertical-align:middle"></p><% } %>
+      <div class="field"><label for="logo_file">Logo (upload)</label><input id="logo_file" type="file" name="logo_file" accept="image/png,image/jpeg,image/gif,image/webp"></div>
+      <div class="field"><label for="logo_image">&hellip;or paste a logo URL</label><input id="logo_image" type="text" name="logo_image" maxlength="500" value="<%= user.logo_image && /^https?:\/\//.test(user.logo_image) ? user.logo_image : '' %>" placeholder="https://example.com/logo.png"></div>
+      <% if (user.logo_image) { %><label class="switch" for="logo_clear"><input id="logo_clear" type="checkbox" name="logo_clear" value="1"><span class="track"></span><span class="switch-label"><strong>Remove logo</strong></span></label><% } %>
+
+      <h3 style="margin:1rem 0 .4rem">Your banner</h3>
+      <p class="small muted" style="margin:0 0 .5rem">A wide image shown across the top of your profile.</p>
+      <% if (user.banner_image) { %><p style="margin:0 0 .5rem"><span class="small muted">Current:</span> <img src="<%= user.banner_image %>" alt="Your banner" style="max-height:60px;max-width:260px;vertical-align:middle;border-radius:6px"></p><% } %>
+      <div class="field"><label for="banner_file">Banner (upload)</label><input id="banner_file" type="file" name="banner_file" accept="image/png,image/jpeg,image/gif,image/webp"></div>
+      <div class="field"><label for="banner_image">&hellip;or paste a banner URL</label><input id="banner_image" type="text" name="banner_image" maxlength="500" value="<%= user.banner_image && /^https?:\/\//.test(user.banner_image) ? user.banner_image : '' %>" placeholder="https://example.com/banner.jpg"></div>
+      <% if (user.banner_image) { %><label class="switch" for="banner_clear"><input id="banner_clear" type="checkbox" name="banner_clear" value="1"><span class="track"></span><span class="switch-label"><strong>Remove banner</strong></span></label><% } %>
+
+      <button class="btn" type="submit" style="margin-top:.8rem">Save</button>
+    </form>
+
+    <form class="panel" method="post" action="/profile/password">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <h2>Change password</h2>
+      <% if (user.password_hash) { %><div class="field"><label for="current">Current password</label><input id="current" type="password" name="current" autocomplete="current-password" required></div><% } %>
+      <div class="field"><label for="next">New password</label><input id="next" type="password" name="next" minlength="8" autocomplete="new-password" required></div>
+      <div class="field"><label for="confirm">Repeat new password</label><input id="confirm" type="password" name="confirm" minlength="8" autocomplete="new-password" required></div>
+      <button class="btn" type="submit">Change password</button>
+    </form>
+
+    <% if (discordAvailable) { %>
+    <div class="panel">
+      <h2>Discord</h2>
+      <% if (user.discord_id) { %>
+        <p>Your Discord account is linked. You can sign in with it.</p>
+        <form method="post" action="/profile/discord/unlink"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn danger" type="submit">Unlink Discord</button></form>
+      <% } else { %>
+        <p>Link Discord to sign in without a password.</p><a class="btn" href="/auth/discord">Link Discord</a>
+      <% } %>
+    </div>
+    <% } %>
+  </div>
+
+  <div>
+    <div class="panel">
+      <h2>API keys</h2>
+      <p class="muted small">Use a key with <span class="mono">Authorization: Bearer &lt;key&gt;</span> to control your VMs from scripts.</p>
+      <form method="post" action="/profile/api-keys" class="btn-row" style="margin-bottom:1rem">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <input type="text" name="name" placeholder="Key name, for example deploy script" maxlength="60" style="flex:1;min-width:180px" aria-label="Key name">
+        <button class="btn primary" type="submit">Create key</button>
+      </form>
+      <% if (!keys.length) { %><p class="muted">You have no API keys.</p><% } else { %>
+      <table>
+        <thead><tr><th>Name</th><th>Starts with</th><th>Last used</th><th></th></tr></thead>
+        <tbody>
+        <% keys.forEach(function (k) { %>
+          <tr><td><%= k.name %></td><td class="mono"><%= k.prefix %></td><td class="small muted"><%= k.last_used || 'Never' %></td>
+          <td class="actions"><form method="post" action="/profile/api-keys/<%= k.id %>/delete"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn small danger" type="submit" data-confirm="Delete this API key? Scripts using it will stop working.">Delete</button></form></td></tr>
+        <% }) %>
+        </tbody>
+      </table>
+      <% } %>
+    </div>
+    <div class="panel">
+      <h2>API reference</h2>
+      <div class="code">GET  /api/v1/vms
+GET  /api/v1/vms/:id
+POST /api/v1/vms/:id/start
+POST /api/v1/vms/:id/stop
+POST /api/v1/vms/:id/reboot
+POST /api/v1/vms/:id/force-stop</div>
+    </div>
+  </div>
+</div>
+<%- include('partials/footer', { scripts: [] }) %>

@@ -1,0 +1,30 @@
+<%- include('../partials/header') %>
+<div class="page-head"><div><h1>Locations</h1><p class="sub">Group your nodes, for example by data center or city.</p></div><a class="btn" href="/admin/nodes">Back to nodes</a></div>
+<form method="post" action="/admin/locations" class="panel btn-row" style="margin-bottom:1rem">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <div style="width:180px"><label for="short">Code</label><input id="short" name="short" type="text" required maxlength="30" placeholder="fra"></div>
+  <div style="flex:1;min-width:220px"><label for="long">Description (optional)</label><input id="long" name="long" type="text" maxlength="100" placeholder="Frankfurt, Germany"></div>
+  <button class="btn primary" type="submit" style="align-self:flex-end">Add location</button>
+</form>
+<div class="panel flush">
+<table>
+  <thead><tr><th>Code</th><th>Description</th><th>Nodes</th><th></th></tr></thead>
+  <tbody>
+  <% locations.forEach(function (l) { %>
+    <tr>
+      <td colspan="2">
+        <form method="post" action="/admin/locations/<%= l.id %>/edit" class="btn-row" id="loc-<%= l.id %>">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <input type="text" name="short" value="<%= l.short %>" maxlength="30" aria-label="Code for <%= l.short %>" style="width:170px">
+          <input type="text" name="long" value="<%= l.long || '' %>" maxlength="100" aria-label="Description for <%= l.short %>" style="flex:1;min-width:200px">
+          <button class="btn small" type="submit">Save</button>
+        </form>
+      </td>
+      <td><%= l.node_count %></td>
+      <td class="actions"><form method="post" action="/admin/locations/<%= l.id %>/delete"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn small danger" type="submit" data-confirm="Remove location <%= l.short %>?">Remove</button></form></td>
+    </tr>
+  <% }) %>
+  </tbody>
+</table>
+</div>
+<%- include('../partials/footer', { scripts: [] }) %>

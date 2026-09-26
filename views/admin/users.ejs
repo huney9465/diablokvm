@@ -1,0 +1,24 @@
+<%- include('../partials/header') %>
+<div class="page-head"><div><h1>Users</h1><p class="sub">Accounts that can sign in to this panel.</p></div><a class="btn primary" href="/admin/users/new">Create user</a></div>
+<div class="panel flush">
+<table>
+  <thead><tr><th>Username</th><th>Role</th><th>VMs</th><th>Email</th><th>Sign-in</th><th>Created</th><th></th></tr></thead>
+  <tbody>
+  <% users.forEach(function (u) { %>
+    <tr>
+      <td><strong><%= u.username %></strong> <% if (u.disabled) { %><span class="tag bad">Disabled</span><% } %></td>
+      <td><span class="tag <%= u.role === 'admin' ? '' : 'off' %>"><%= u.role === 'admin' ? 'Administrator' : 'User' %></span></td>
+      <td><%= u.vm_count %> of <%= u.max_vms %></td>
+      <td class="small"><%= u.email || '' %></td>
+      <td class="small"><%= [u.password_hash ? 'Password' : null, u.discord_id ? 'Discord' : null].filter(Boolean).join(', ') %></td>
+      <td class="small muted"><%= u.created_at %></td>
+      <td class="actions">
+        <a class="btn small" href="/admin/users/<%= u.id %>/edit">Edit</a>
+        <% if (u.id !== user.id) { %><form method="post" action="/admin/users/<%= u.id %>/delete"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn small danger" type="submit" data-confirm="Delete <%= u.username %> and all of their VMs? This cannot be undone.">Delete</button></form><% } %>
+      </td>
+    </tr>
+  <% }) %>
+  </tbody>
+</table>
+</div>
+<%- include('../partials/footer', { scripts: [] }) %>

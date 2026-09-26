@@ -1,0 +1,45 @@
+<%- include('../partials/header') %>
+<%
+const fmtB = (n) => { const u=['B','KB','MB','GB','TB']; const i=n?Math.min(4,Math.floor(Math.log(n)/Math.log(1024))):0; return (n/1024**i).toFixed(i?1:0)+' '+u[i]; };
+%>
+<div class="page-head"><div><h1>OS templates</h1><p class="sub">Cloud images that VMs are built from. Each node keeps its own copy, so download an image to every node that should offer it.</p></div><a class="btn primary" href="/admin/templates/new">Add template</a></div>
+<div class="note info">Vendors rename image files from time to time. If a download fails with a 404, open the template, paste the current image URL and download again.</div>
+<div class="panel flush">
+<table>
+  <thead><tr><th>Template</th><% nodes.forEach(function (n) { %><th><%= n.name %></th><% }) %><th>In use</th><th></th></tr></thead>
+  <tbody>
+  <% templates.forEach(function (t) { %>
+    <tr>
+      <td><strong><%= t.name %></strong><% if (!t.enabled) { %> <span class="tag off">Hidden</span><% } %><div class="small muted mono"><%= t.filename %></div></td>
+      <% nodes.forEach(function (n) {
+           const inv = invs[n.id];
+           const have = inv && inv.templates[t.filename];
+           const job = inv && inv.jobs['tpl:' + t.filename];
+      %>
+        <td>
+          <% if (!n.online) { %><span class="small muted">Offline</span>
+          <% } else if (job && job.status === 'running') { %><span class="small">Downloading</span><progress max="<%= job.total || 100 %>" value="<%= job.total ? job.received : 0 %>" data-tpl-file="<%= t.filename %>" data-node="<%= n.id %>"></progress><span class="small muted" data-tpl-text="<%= t.filename %>-<%= n.id %>"></span>
+          <% } else if (have) { %><span class="tag">Ready</span> <span class="small muted"><%= fmtB(have.size) %></span>
+          <% } else if (job && job.status === 'failed') { %><span class="tag bad">Failed</span><div class="small muted" style="max-width:190px"><%= job.error %></div>
+          <% } else { %><span class="tag off">Not downloaded</span><% } %>
+        </td>
+      <% }) %>
+      <td class="small"><%= usage[t.id] || 0 %> VMs</td>
+      <td class="actions">
+        <form method="post" action="/admin/templates/<%= t.id %>/download" class="btn-row" style="display:inline-flex">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <select name="node_id" aria-label="Download to" style="width:auto">
+            <option value="all">All nodes missing it</option>
+            <% nodes.filter((n) => n.online).forEach(function (n) { %><option value="<%= n.id %>"><%= n.name %></option><% }) %>
+          </select>
+          <button class="btn small" type="submit">Download</button>
+        </form>
+        <a class="btn small" href="/admin/templates/<%= t.id %>/edit">Edit</a>
+        <form method="post" action="/admin/templates/<%= t.id %>/delete"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn small danger" type="submit" data-confirm="Remove <%= t.name %> and delete its image from every node?">Remove</button></form>
+      </td>
+    </tr>
+  <% }) %>
+  </tbody>
+</table>
+</div>
+<%- include('../partials/footer', { scripts: [{ src: '/static/js/admin.js' }] }) %>

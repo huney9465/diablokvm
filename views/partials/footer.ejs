@@ -1,0 +1,11 @@
+<% if (user) { %></main><% } else { %>
+<div class="credit bare-credit">
+  <% const ct = settings.credit_text || 'Created by DiabloKVM'; const cu = settings.credit_url || ''; %>
+  <% if (cu) { %><a href="<%= cu %>" target="_blank" rel="noopener noreferrer"><%= ct %></a><% } else { %><span><%= ct %></span><% } %>
+</div>
+<% } %>
+<script src="/static/js/app.js?v=<%= assetVersion %>"></script>
+<% if (typeof scripts !== 'undefined') { scripts.forEach(function (s) { %><script <%- s.module ? 'type="module"' : '' %> src="<%= s.src %><%= s.src.includes('?') ? '&' : '?' %>v=<%= assetVersion %>"></script>
+<% }) } %>
+</body>
+</html>

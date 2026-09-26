@@ -1,0 +1,13 @@
+<%- include('partials/header') %>
+<div class="page-head">
+  <div><h1><%= vm.name %> console</h1><p class="sub">Graphical display. Click inside the screen to send keyboard input.</p></div>
+  <div class="btn-row">
+    <button class="btn" type="button" id="cad">Send Ctrl+Alt+Del</button>
+    <button class="btn" type="button" id="fs">Full screen</button>
+    <a class="btn" href="/vms/<%= vm.id %>">Back to VM</a>
+  </div>
+</div>
+<div class="screen" id="screen" data-vm="<%= vm.id %>" data-running="<%= vm.status === 'running' ? '1' : '0' %>">
+  <div class="overlay" id="overlay"><span><%= vm.status === 'running' ? 'Connecting...' : 'This VM is stopped. Start it to use the console.' %></span></div>
+</div>
+<%- include('partials/footer', { scripts: [{ src: '/static/js/console.js', module: true }] }) %>

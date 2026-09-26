@@ -1,0 +1,155 @@
+<%- include('../partials/header') %>
+<%
+const fmtMb = (mb) => mb >= 1024 ? (mb / 1024).toFixed(mb % 1024 ? 1 : 0) + ' GB' : mb + ' MB';
+const fmtB = (n) => { const u=['B','KB','MB','GB','TB']; const i=n?Math.min(4,Math.floor(Math.log(n)/Math.log(1024))):0; return (n/1024**i).toFixed(i?1:0)+' '+u[i]; };
+const tabName = { about: 'About', settings: 'Settings', configuration: 'Configuration', servers: 'Servers' };
+const local = node.id === 1;
+const st = info.stats;
+%>
+<div class="page-head">
+  <div>
+    <h1><span class="lamp <%= info.online ? 'running' : 'off' %>" style="width:14px;height:14px"></span><%= node.name %></h1>
+    <p class="sub"><span class="mono"><%= node.location %></span><%= node.description ? ', ' + node.description : '' %></p>
+  </div>
+  <a class="btn" href="/admin/nodes">All nodes</a>
+</div>
+
+<nav class="tabs" aria-label="Node sections">
+  <% tabs.forEach(function (t) { %><a href="/admin/nodes/<%= node.id %>?tab=<%= t %>" <%- t === tab ? 'aria-current="page"' : '' %>><%= tabName[t] %><% if (t === 'servers') { %> (<%= vms.length %>)<% } %></a><% }) %>
+</nav>
+
+<% if (tab === 'about') { %>
+<div class="grid two">
+  <div class="panel">
+    <h2>Information</h2>
+    <dl class="spec">
+      <dt>Status</dt><dd><span class="state <%= info.online ? 'running' : '' %>"><%= info.online ? 'Online' : 'Offline' %></span><% if (!info.online) { %> <span class="muted small"><%= node.last_seen ? 'last seen ' + new Date(node.last_seen).toISOString().replace('T', ' ').slice(0, 16) + ' UTC' : 'never connected' %></span><% } %></dd>
+      <dt>UUID</dt><dd class="mono"><%= node.uuid %></dd>
+      <% if (st) { %>
+        <dt>Hostname</dt><dd class="mono"><%= st.hostname %></dd>
+        <dt>Agent version</dt><dd><%= local ? 'built in' : (info.meta.version || 'unknown') %></dd>
+        <dt>CPU threads</dt><dd><%= st.cpus %></dd>
+        <dt>Load (1 min)</dt><dd><%= st.load.toFixed(2) %></dd>
+        <dt>Memory</dt><dd><%= fmtB(st.memTotal - st.memFree) %> used of <%= fmtB(st.memTotal) %></dd>
+        <dt>Storage</dt><dd><%= st.diskTotal ? fmtB(st.diskFree) + ' free of ' + fmtB(st.diskTotal) : 'unknown' %></dd>
+        <dt>Uptime</dt><dd><%= Math.floor(st.uptime / 86400) %> days, <%= Math.floor(st.uptime % 86400 / 3600) %> hours</dd>
+        <dt>Hardware acceleration</dt><dd><%= st.hasKvm ? 'KVM available' : 'No /dev/kvm (VMs will be slow)' %></dd>
+      <% } else { %><dt>System</dt><dd class="muted">Available when the node is online.</dd><% } %>
+    </dl>
+  </div>
+  <div class="panel">
+    <h2>Allocation</h2>
+    <p class="small muted">What the VMs on this node have been given, against the limits in Settings.</p>
+    <div style="margin-bottom:1rem">
+      <div class="small"><strong>Memory</strong>: <%= fmtMb(cap.usedMem) %><% if (cap.memLimit == null) { %> of an unknown limit<% } else if (cap.memLimit === Infinity) { %> (no limit)<% } else { %> of <%= fmtMb(cap.memLimit) %><% if (node.memory_over > 0) { %> <span class="muted">(<%= fmtMb(cap.memMb) %> plus <%= node.memory_over %>%)</span><% } %><% } %></div>
+      <% if (cap.memLimit && cap.memLimit !== Infinity) { %><meter min="0" max="<%= cap.memLimit %>" low="<%= cap.memLimit * 0.75 %>" high="<%= cap.memLimit * 0.95 %>" optimum="0" value="<%= Math.min(cap.usedMem, cap.memLimit) %>" style="width:100%"></meter><% } %>
+    </div>
+    <div style="margin-bottom:1rem">
+      <div class="small"><strong>Disk</strong>: <%= cap.usedDisk %> GB<% if (cap.diskLimit == null) { %> of an unknown limit<% } else if (cap.diskLimit === Infinity) { %> (no limit)<% } else { %> of <%= cap.diskLimit %> GB<% if (node.disk_over > 0) { %> <span class="muted">(<%= cap.diskGb %> GB plus <%= node.disk_over %>%)</span><% } %><% } %></div>
+      <% if (cap.diskLimit && cap.diskLimit !== Infinity) { %><meter min="0" max="<%= cap.diskLimit %>" low="<%= cap.diskLimit * 0.75 %>" high="<%= cap.diskLimit * 0.95 %>" optimum="0" value="<%= Math.min(cap.usedDisk, cap.diskLimit) %>" style="width:100%"></meter><% } %>
+    </div>
+    <dl class="spec"><dt>VMs</dt><dd><%= cap.vms %></dd><dt>Scheduling</dt><dd><%= !node.enabled ? 'Maintenance: no new VMs' : (node.allow_users ? 'Admins and users' : 'Admins only') %></dd></dl>
+  </div>
+</div>
+<% } %>
+
+<% if (tab === 'settings') { %>
+<% if (error) { %><div class="note err" role="alert"><%= error %></div><% } %>
+<form method="post" action="/admin/nodes/<%= node.id %>/edit" class="panel form-narrow">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <input type="hidden" name="_form" value="node">
+  <fieldset>
+    <legend>Basic details</legend>
+    <div class="field"><label for="name">Name</label><input id="name" name="name" type="text" value="<%= form.name %>" required maxlength="40"></div>
+    <div class="field"><label for="description">Description</label><input id="description" name="description" type="text" value="<%= form.description || '' %>" maxlength="200"></div>
+    <div class="field"><label for="location_id">Location</label>
+      <select id="location_id" name="location_id"><% locations.forEach(function (l) { %><option value="<%= l.id %>" <%= Number(form.location_id) === l.id ? 'selected' : '' %>><%= l.short %><%= l.long ? ' (' + l.long + ')' : '' %></option><% }) %></select></div>
+    <label class="check" style="margin-bottom:.6rem"><input type="checkbox" name="allow_users" value="1" <%= form.allow_users ? 'checked' : '' %>> Place regular users' VMs on this node</label>
+    <label class="check"><input type="checkbox" name="enabled" value="1" <%= form.enabled ? 'checked' : '' %>> Accept new VMs (turn off for maintenance)</label>
+    <p class="small muted" style="margin:.5rem 0 0">Existing VMs keep running whichever you choose.</p>
+  </fieldset>
+  <fieldset>
+    <legend>Resources</legend>
+    <p class="small muted">Leave a limit at 0 to use what the node reports. Over-allocation: 0 means none, 50 means 150% of the limit, -1 means unlimited. Limits apply when VMs are created or grown.</p>
+    <div class="row">
+      <div class="field"><label for="memory_mb">Memory limit (MB)</label><input id="memory_mb" name="memory_mb" type="number" min="0" value="<%= form.memory_mb || 0 %>"></div>
+      <div class="field"><label for="memory_over">Memory over-allocation (%)</label><input id="memory_over" name="memory_over" type="number" min="-1" max="1000" value="<%= form.memory_over || 0 %>"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label for="disk_gb">Disk limit (GB)</label><input id="disk_gb" name="disk_gb" type="number" min="0" value="<%= form.disk_gb || 0 %>"></div>
+      <div class="field"><label for="disk_over">Disk over-allocation (%)</label><input id="disk_over" name="disk_over" type="number" min="-1" max="1000" value="<%= form.disk_over || 0 %>"></div>
+    </div>
+  </fieldset>
+  <button class="btn primary" type="submit">Save changes</button>
+</form>
+<% if (!local) { %>
+<div class="panel form-narrow" style="border-color:#e2b8b0">
+  <h2>Delete node</h2>
+  <p class="muted">Removes the node from the panel. It must not host any VMs. Nothing is deleted on the server itself.</p>
+  <form method="post" action="/admin/nodes/<%= node.id %>/delete"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn solid-danger" type="submit" data-confirm="Remove <%= node.name %> from the panel?" <%= vms.length ? 'disabled' : '' %>>Delete this node</button><% if (vms.length) { %> <span class="small muted">It still hosts <%= vms.length %> VM<%= vms.length === 1 ? '' : 's' %>.</span><% } %></form>
+</div>
+<% } %>
+<% } %>
+
+<% if (tab === 'configuration') { %>
+<% if (local) { %>
+  <div class="panel form-narrow"><h2>The Local node needs no setup</h2><p class="muted">It is the server running the panel. To add another server, create a new node from the <a href="/admin/nodes">nodes list</a>.</p></div>
+<% } else { %>
+<% if (justCreated) { %><div class="note ok" role="status"><strong><%= node.name %></strong> was created. Set up its server with the command below.</div><% } %>
+<div class="note warn small">Generating a deploy command or a new configuration issues a <strong>new token</strong>. An agent already running on this node disconnects until it is updated.</div>
+
+<div class="panel form-narrow">
+  <h2>Auto-deploy <span class="tag">Recommended</span></h2>
+  <p class="muted">On the server (Debian or Ubuntu, with root access) run one command. It installs QEMU and the agent, writes the configuration and starts the service.</p>
+  <% if (reveal && reveal.kind === 'deploy') { %>
+    <div class="keybox" style="white-space:pre-wrap;word-break:break-all" id="deploy-cmd">curl -fsSL <%= reveal.url %> | sudo bash</div>
+    <p class="small muted" style="margin:.6rem 0 0">Works once and expires at <%= new Date(reveal.expires).toISOString().replace('T', ' ').slice(0, 16) %> UTC (15 minutes). It contains a private link, so do not share it. Use an <span class="mono">https://</span> panel address in production.</p>
+    <p class="small muted" style="margin:.4rem 0 0">Then open <a href="/admin/templates">OS templates</a> and download the images you want to this node.</p>
+  <% } else { %>
+    <form method="post" action="/admin/nodes/<%= node.id %>/deploy"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn primary" type="submit">Generate deploy command</button></form>
+  <% } %>
+</div>
+
+<div class="panel form-narrow">
+  <h2>Manual setup</h2>
+  <p class="muted">Prefer to do it yourself? Install the node agent from the project folder and place a configuration file, like a Wings <span class="mono">config.yml</span>.</p>
+  <% if (reveal && reveal.kind === 'manual') { %>
+    <p class="small" style="margin-bottom:.4rem"><strong>1.</strong> Save this as <span class="mono">/etc/diablo-node/config.yml</span> on the node:</p>
+    <div class="keybox" style="white-space:pre;overflow-x:auto"><%= reveal.config %></div>
+    <p class="small" style="margin:.9rem 0 .4rem"><strong>2.</strong> From the extracted project folder on the node, run the installer (it also creates that file for you):</p>
+    <div class="keybox" style="white-space:pre-wrap;word-break:break-all">sudo bash install-node.sh --panel <%= reveal.url %> --token <%= reveal.token %></div>
+    <p class="small muted" style="margin:.6rem 0 0">The token is shown only now. Copy it before leaving this page.</p>
+  <% } else { %>
+    <form method="post" action="/admin/nodes/<%= node.id %>/token"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn" type="submit">Generate configuration</button></form>
+  <% } %>
+</div>
+
+<div class="panel form-narrow">
+  <h2>After setup</h2>
+  <dl class="spec">
+    <dt>Check the agent</dt><dd class="mono">systemctl status kvmpanel-node</dd>
+    <dt>Read its log</dt><dd class="mono">journalctl -u kvmpanel-node -f</dd>
+    <dt>Configuration file</dt><dd class="mono">/etc/diablo-node/config.yml</dd>
+    <dt>VM data</dt><dd class="mono">/var/lib/kvmpanel-node</dd>
+  </dl>
+  <p class="small muted" style="margin:.75rem 0 0">The node connects out to <span class="mono"><%= panel %></span>, so it needs no open ports.</p>
+</div>
+<% } %>
+<% } %>
+
+<% if (tab === 'servers') { %>
+<div class="panel flush">
+<table>
+  <thead><tr><th>VM</th><th>Owner</th><th>Status</th><th>OS</th><th class="right">Resources</th></tr></thead>
+  <tbody>
+  <% vms.forEach(function (v) { %>
+    <tr><td><span class="lamp <%= v.status === 'running' ? 'running' : 'off' %>"></span><a href="/vms/<%= v.id %>"><strong><%= v.name %></strong></a></td><td><%= v.owner_name %></td>
+      <td><span class="state <%= v.status %>"><%= v.status === 'running' ? 'Running' : v.status === 'unknown' ? 'Node offline' : 'Stopped' %></span></td><td><%= v.template_name || '' %></td>
+      <td class="right small"><%= v.cpu %> vCPU, <%= fmtMb(v.ram_mb) %>, <%= v.disk_gb %> GB</td></tr>
+  <% }) %>
+  <% if (!vms.length) { %><tr><td colspan="5"><div class="empty"><h2>No VMs on this node</h2><p>New VMs land here when you choose this node, or through automatic placement.</p></div></td></tr><% } %>
+  </tbody>
+</table>
+</div>
+<% } %>
+<%- include('../partials/footer', { scripts: [] }) %>

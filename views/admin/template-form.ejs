@@ -1,0 +1,13 @@
+<%- include('../partials/header') %>
+<div class="page-head"><h1><%= title %></h1></div>
+<% if (error) { %><div class="note err" role="alert"><%= error %></div><% } %>
+<form method="post" action="<%= isNew ? '/admin/templates' : '/admin/templates/' + t.id + '/edit' %>" class="panel form-narrow">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <div class="field"><label for="name">Name</label><input id="name" name="name" type="text" value="<%= t.name || '' %>" required placeholder="Ubuntu 24.04 LTS"></div>
+  <div class="field"><label for="family">Family</label><input id="family" name="family" type="text" value="<%= t.family || 'linux' %>" placeholder="ubuntu"><div class="hint">A free-form label such as ubuntu, debian or rhel.</div></div>
+  <div class="field"><label for="url">Image URL</label><input id="url" name="url" type="url" value="<%= t.url || '' %>" required placeholder="https://.../image.qcow2"><div class="hint">Must be a cloud-init enabled qcow2 or img cloud image for x86_64.</div></div>
+  <% if (isNew) { %><div class="field"><label for="filename">Saved as</label><input id="filename" name="filename" type="text" value="<%= t.filename || '' %>" required placeholder="ubuntu-24.04.qcow2"><div class="hint">File name on disk. Cannot be changed later.</div></div><% } %>
+  <label class="check" style="margin-bottom:1rem"><input type="checkbox" name="enabled" value="1" <%= t.enabled ? 'checked' : '' %>> Offer this template when creating VMs</label>
+  <div class="btn-row"><button class="btn primary" type="submit"><%= isNew ? 'Add template' : 'Save changes' %></button><a class="btn" href="/admin/templates">Cancel</a></div>
+</form>
+<%- include('../partials/footer', { scripts: [] }) %>

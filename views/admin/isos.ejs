@@ -1,0 +1,34 @@
+<%- include('../partials/header') %>
+<%
+const fmtB = (n) => { const u=['B','KB','MB','GB','TB']; const i=n?Math.min(4,Math.floor(Math.log(n)/Math.log(1024))):0; return (n/1024**i).toFixed(i?1:0)+' '+u[i]; };
+%>
+<div class="page-head"><div><h1>ISO library</h1><p class="sub">Install discs that VMs can boot from. Each node has its own library, and a VM can only use ISOs on its own node.</p></div>
+  <form method="get" action="/admin/isos" class="btn-row"><label for="node-pick" style="margin:0">Node</label>
+    <select id="node-pick" name="node" style="width:auto" data-autosubmit><% nodes.forEach(function (n) { %><option value="<%= n.id %>" <%= n.id === node.id ? 'selected' : '' %>><%= n.name %><%= n.online ? '' : ' (offline)' %></option><% }) %></select>
+    <noscript><button class="btn small" type="submit">Show</button></noscript>
+  </form>
+</div>
+<% if (!online) { %>
+  <div class="panel empty"><h2><%= node.name %> is offline</h2><p>Its ISO library can be managed again when the node reconnects.</p></div>
+<% } else { %>
+<form method="post" action="/admin/isos/download" class="panel btn-row" style="margin-bottom:1rem">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <input type="hidden" name="node_id" value="<%= node.id %>">
+  <div style="flex:1;min-width:260px"><label for="url">Download an ISO to <%= node.name %> from a URL</label><input id="url" type="url" name="url" placeholder="https://example.org/distro-amd64.iso" required></div>
+  <button class="btn primary" type="submit" style="align-self:flex-end">Download</button>
+</form>
+<div id="iso-jobs" data-poll-isos="<%= node.id %>"></div>
+<div class="panel flush">
+<table>
+  <thead><tr><th>File</th><th>Size</th><th>Attached to</th><th></th></tr></thead>
+  <tbody>
+  <% isos.forEach(function (i) { %>
+    <tr><td class="mono"><%= i.name %></td><td class="small"><%= fmtB(i.size) %></td><td class="small"><%= used[i.name] ? used[i.name] + ' VMs' : '' %></td>
+    <td class="actions"><form method="post" action="/admin/isos/delete"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="node_id" value="<%= node.id %>"><input type="hidden" name="name" value="<%= i.name %>"><button class="btn small danger" type="submit" data-confirm="Delete <%= i.name %> from <%= node.name %>?">Delete</button></form></td></tr>
+  <% }) %>
+  <% if (!isos.length) { %><tr><td colspan="4"><div class="empty"><h2>No ISO files on <%= node.name %></h2><p>Paste a download link above to add one.</p></div></td></tr><% } %>
+  </tbody>
+</table>
+</div>
+<% } %>
+<%- include('../partials/footer', { scripts: [{ src: '/static/js/admin.js' }] }) %>

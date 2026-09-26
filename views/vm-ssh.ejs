@@ -1,0 +1,34 @@
+<%- include('partials/header', { headExtra: '<link rel="stylesheet" href="/vendor/xterm/css/xterm.css">' }) %>
+<div class="page-head">
+  <div>
+    <h1><%= vm.name %> terminal</h1>
+    <p class="sub">
+      <% if (mode === 'serial') { %>Direct root console. This drops you straight into a <strong>root</strong> shell on the VM &mdash; no password needed. Only one person can use it at a time.
+      <% } else { %>SSH session through the panel to <span class="mono"><%= host || 'no fixed address' %>:<%= port %></span> as <strong>root</strong>.<% } %>
+    </p>
+  </div>
+  <div class="btn-row">
+    <% if (vm.net_mode === 'bridge') { %><a class="btn" href="/vms/<%= vm.id %>/ssh<%= mode === 'ssh' ? '' : '?mode=ssh' %>"><%= mode === 'ssh' ? 'Use serial console' : 'Use SSH' %></a><% } %>
+    <a class="btn" href="/vms/<%= vm.id %>">Back to VM</a>
+  </div>
+</div>
+<% if (vm.status !== 'running') { %>
+  <div class="panel empty"><h2>This VM is stopped</h2><p>Start it and wait for it to boot before opening a terminal.</p><a class="btn primary" href="/vms/<%= vm.id %>">Go to VM</a></div>
+<% } else { %>
+<% if (mode === 'ssh') { %>
+<div class="panel" id="login" style="max-width:520px">
+  <form id="ssh-form">
+    <div class="row">
+      <div class="field"><label for="u">Username</label><input id="u" type="text" value="<%= vm.guest_user || 'root' %>" autocomplete="off" readonly></div>
+      <div class="field"><label for="p">Password</label><input id="p" type="password" autocomplete="off" required></div>
+    </div>
+    <% if (!host && user.role === 'admin') { %><div class="field"><label for="h">VM address</label><input id="h" type="text" placeholder="192.168.1.50" required></div><% } %>
+    <button class="btn primary" type="submit">Connect</button>
+    <span class="small muted" id="ssh-msg" style="margin-left:.6rem" role="status"></span>
+  </form>
+  <p class="small muted" style="margin:.75rem 0 0">Cloud images may take a minute after boot before SSH is ready. Your password is sent only to your own VM.</p>
+</div>
+<% } %>
+<div class="term" id="term" data-vm="<%= vm.id %>" data-mode="<%= mode %>" <%= mode === 'ssh' ? 'hidden' : '' %>></div>
+<% } %>
+<%- include('partials/footer', { scripts: vm.status === 'running' ? [{ src: '/static/js/ssh.js', module: true }] : [] }) %>

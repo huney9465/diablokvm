@@ -1,0 +1,16 @@
+<%- include('../partials/header') %>
+<div class="page-head"><h1><%= title %></h1></div>
+<% if (error) { %><div class="note err" role="alert"><%= error %></div><% } %>
+<form method="post" action="<%= isNew ? '/admin/users' : '/admin/users/' + u.id + '/edit' %>" class="panel form-narrow">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <% if (isNew) { %><div class="field"><label for="username">Username</label><input id="username" name="username" type="text" value="<%= u.username || '' %>" required></div><% } %>
+  <div class="field"><label for="email">Email (optional)</label><input id="email" name="email" type="email" value="<%= u.email || '' %>"></div>
+  <div class="field"><label for="password"><%= isNew ? 'Password' : 'New password' %></label><input id="password" name="password" type="password" minlength="8" autocomplete="new-password" <%= isNew ? 'required' : '' %>><div class="hint"><%= isNew ? 'At least 8 characters.' : 'Leave blank to keep the current password.' %></div></div>
+  <div class="row">
+    <div class="field"><label for="role">Role</label><select id="role" name="role"><option value="user" <%= u.role === 'user' ? 'selected' : '' %>>User</option><option value="admin" <%= u.role === 'admin' ? 'selected' : '' %>>Administrator</option></select></div>
+    <div class="field"><label for="max_vms">VM limit</label><input id="max_vms" name="max_vms" type="number" min="0" value="<%= u.max_vms %>"></div>
+  </div>
+  <% if (!isNew) { %><label class="check" style="margin-bottom:1rem"><input type="checkbox" name="disabled" value="1" <%= u.disabled ? 'checked' : '' %>> Disable this account (blocks sign-in)</label><% } %>
+  <div class="btn-row"><button class="btn primary" type="submit"><%= isNew ? 'Create user' : 'Save changes' %></button><a class="btn" href="/admin/users">Cancel</a></div>
+</form>
+<%- include('../partials/footer', { scripts: [] }) %>

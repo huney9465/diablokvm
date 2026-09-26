@@ -1,0 +1,19 @@
+[Unit]
+Description=Diablo KVM panel
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/kvmpanel
+ExecStart=/usr/bin/node src/server.js
+Restart=on-failure
+RestartSec=3
+# Running VMs are daemonized QEMU processes, so keep them alive when the panel restarts.
+KillMode=process
+# QEMU and tap/bridge setup need root.
+User=root
+EnvironmentFile=-/opt/kvmpanel/.env
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,232 @@
+<%- include('partials/header') %>
+<%
+const running = vm.status === 'running';
+const fmtMb = (mb) => mb >= 1024 ? (mb / 1024).toFixed(mb % 1024 ? 1 : 0) + ' GB' : mb + ' MB';
+%>
+<% if (!nodeOnline) { %><div class="note warn" role="status">Node <strong><%= vm.node_name %></strong> is offline, so this VM's power state is unknown and controls are unavailable. They come back when the node reconnects.</div><% } %>
+<div class="faceplate" data-vm-id="<%= vm.id %>" data-status="<%= vm.status %>">
+  <span class="lamp <%= running ? 'running' : 'off' %>" data-lamp-for="<%= vm.id %>"></span>
+  <div>
+    <h1><%= vm.name %></h1>
+    <div class="meta"><span data-state-for="<%= vm.id %>"><%= running ? 'Running' : vm.status === 'unknown' ? 'Node offline' : 'Stopped' %></span>, <%= vm.template_name || 'unknown OS' %><% if (user.role === 'admin') { %>, owned by <%= vm.owner_name %>, on <%= vm.node_name %><% } %></div>
+  </div>
+  <span class="spacer"></span>
+  <a class="btn files-link" href="/vms/<%= vm.id %>/files" title="Browse and upload files for this VM">Files</a>
+  <a class="btn" href="/vms/<%= vm.id %>/guest" title="Browse the real files inside this VM's disk">Disk files</a>
+  <% if (!nodeOnline) { %>
+  <% } else if (!running) { %>
+    <form method="post" action="/vms/<%= vm.id %>/power"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="action" value="start"><button class="btn go" type="submit">Start</button></form>
+  <% } else { %>
+    <a class="btn" href="/vms/<%= vm.id %>/console">Console</a>
+    <a class="btn" href="/vms/<%= vm.id %>/ssh">Terminal</a>
+    <% if (vm.sshx_server && !vm.sshx_cancelled) { %><a class="btn" href="/vms/<%= vm.id %>/sshx" target="_blank" rel="noopener noreferrer" title="Opens in a new tab">SSHX</a><% } %>
+    <form method="post" action="/vms/<%= vm.id %>/power"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="action" value="reboot"><button class="btn" type="submit" data-confirm="Reboot <%= vm.name %>? Unsaved work inside the VM may be lost.">Reboot</button></form>
+    <form method="post" action="/vms/<%= vm.id %>/power"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="action" value="stop"><button class="btn" type="submit">Shut down</button></form>
+    <form method="post" action="/vms/<%= vm.id %>/power"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="action" value="force-stop"><button class="btn" type="submit" data-confirm="Cut power to <%= vm.name %> immediately? This can corrupt data inside the VM.">Power off</button></form>
+  <% } %>
+</div>
+
+<div class="grid two">
+  <div class="panel">
+    <h2>Details</h2>
+    <dl class="spec">
+      <dt>CPU</dt><dd><%= vm.cpu %> cores</dd>
+      <dt>Memory</dt><dd><%= fmtMb(vm.ram_mb) %></dd>
+      <dt>Disk</dt><dd><%= vm.disk_gb %> GB</dd>
+      <dt>Login user</dt><dd class="mono"><%= vm.guest_user %></dd>
+      <dt>Network</dt><dd><%= vm.net_mode === 'bridge' ? 'Bridge ' + vm.bridge + (vm.vlan ? ', VLAN ' + vm.vlan : '') : 'NAT, private to the host' %></dd>
+      <% if (vm.net_mode === 'bridge') { %>
+        <dt>IPv4</dt><dd class="mono"><%= vm.ip ? vm.ip + '/' + vm.prefix : 'DHCP' %></dd>
+        <% if (vm.gateway) { %><dt>Gateway</dt><dd class="mono"><%= vm.gateway %></dd><% } %>
+      <% } %>
+      <% if (user.role === 'admin') { %><dt>Node</dt><dd><%= vm.node_name %></dd><% } %>
+      <% if (vm.suspended) { %><dt>State</dt><dd>Suspended (paused)</dd><% } %>
+      <% if (mining && mining.suspect) { %><dt>Mining</dt><dd>High CPU use detected</dd><% } %>
+      <% if (vm.sshx_server) { %><dt>SSHX</dt><dd><%= vm.sshx_cancelled ? 'Cancelled' : 'Enabled' %></dd><% } %>
+      <dt>MAC</dt><dd class="mono"><%= vm.mac %></dd>
+      <dt>Created</dt><dd><%= vm.created_at %></dd>
+    </dl>
+    <p class="small muted" style="margin:1rem 0 0"><strong>Direct root access.</strong> The <strong>Terminal</strong> button drops you straight into a root shell on this VM &mdash; no password needed. It works like a container: open the terminal and you are in.</p>
+    <% if (running) { %>
+      <div class="btn-row" style="margin-top:.6rem">
+        <% if (vm.suspended) { %>
+          <form method="post" action="/vms/<%= vm.id %>/power"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="action" value="resume"><button class="btn go" type="submit">Resume</button></form>
+          <span class="small muted">This VM is paused. Resume it to continue where it left off.</span>
+        <% } else { %>
+          <form method="post" action="/vms/<%= vm.id %>/power"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="action" value="suspend"><button class="btn" type="submit" data-confirm="Suspend (pause) <%= vm.name %>? The VM freezes instantly and resumes exactly where it left off.">Suspend</button></form>
+        <% } %>
+      </div>
+    <% } %>
+    <% if (mining && mining.suspect) { %>
+      <div class="note warn" style="margin-top:.8rem" role="status"><strong>Mining suspected.</strong> This VM's CPU has stayed very high for a while. <%= vm.suspended ? 'It has been suspended.' : 'Suspend it if this is not expected.' %></div>
+    <% } %>
+    <% if (vm.sshx_server) { %>
+      <div class="note" style="margin-top:.8rem" role="status">
+        <strong>SSHX browser terminal.</strong> Opens a full terminal for this VM in a new tab. It stays available (it does not expire) until you cancel it yourself.
+        <div class="btn-row" style="margin-top:.5rem">
+          <% if (vm.sshx_cancelled) { %>
+            <form method="post" action="/vms/<%= vm.id %>/sshx/start"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn go" type="submit">Start SSHX</button></form>
+            <span class="small muted">The session was cancelled. Start a new one to get a fresh link.</span>
+          <% } else if (running) { %>
+            <a class="btn go" href="/vms/<%= vm.id %>/sshx" target="_blank" rel="noopener noreferrer">Open SSHX</a>
+            <form method="post" action="/vms/<%= vm.id %>/sshx/stop"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn danger" type="submit" data-confirm="Cancel the SSHX session for <%= vm.name %>? The link stops working until you start a new session.">Cancel SSHX</button></form>
+          <% } else { %>
+            <span class="small muted">Start the VM to use SSHX.</span>
+          <% } %>
+        </div>
+      </div>
+    <% } %>
+    <% if (user.role === 'admin') { %>
+      <p class="small" style="margin:.9rem 0 0"><a href="/vms/<%= vm.id %>/commands">View command history</a> <span class="muted">(admin only)</span></p>
+    <% } %>
+    <% if (vm.net_mode === 'user') { %>
+      <p class="small muted" style="margin:.5rem 0 0">The <strong>Terminal</strong> button uses the VM's serial console through the panel, so no extra port is needed.</p>
+    <% } else if (vm.ip) { %>
+      <h3 style="margin-top:1rem">Connect over SSH</h3>
+      <div class="code">ssh <%= vm.guest_user %>@<%= vm.ip %></div>
+    <% } %>
+  </div>
+
+  <div>
+    <div class="panel">
+      <h2>Boot disc</h2>
+      <form method="post" action="/vms/<%= vm.id %>/iso" class="btn-row">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <select name="iso" style="flex:1;min-width:180px" aria-label="ISO file">
+          <option value="">No disc</option>
+          <% isos.forEach(function (i) { %><option value="<%= i.name %>" <%= vm.iso === i.name ? 'selected' : '' %>><%= i.name %></option><% }) %>
+        </select>
+        <button class="btn" type="submit">Apply</button>
+      </form>
+      <% if (!isos.length) { %><p class="small muted" style="margin:.6rem 0 0">No ISO files yet.<% if (user.role === 'admin') { %> <a href="/admin/isos">Add one</a>.<% } %></p><% } %>
+    </div>
+
+    <div class="panel">
+      <h2>CPU, memory and disk</h2>
+      <% if (user.role === 'admin') { %>
+      <form method="post" action="/vms/<%= vm.id %>/edit">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="row">
+          <div class="field"><label for="cpu">CPU cores</label><input id="cpu" type="number" name="cpu" min="1" value="<%= vm.cpu %>"></div>
+          <div class="field"><label for="ram_mb">Memory (MB)</label><input id="ram_mb" type="number" name="ram_mb" min="256" step="256" value="<%= vm.ram_mb %>"></div>
+        </div>
+        <div class="field"><label for="owner_id">Owner</label><select id="owner_id" name="owner_id"><% owners.forEach(function (o) { %><option value="<%= o.id %>" <%= o.id === vm.owner_id ? 'selected' : '' %>><%= o.username %></option><% }) %></select></div>
+        <label class="check" style="margin-bottom:.9rem"><input type="checkbox" name="autostart" value="1" <%= vm.autostart ? 'checked' : '' %>> Start when the panel starts</label>
+        <button class="btn" type="submit">Save changes</button>
+        <span class="small muted" style="margin-left:.5rem">Changes apply the next time the VM starts.</span>
+      </form>
+      <hr style="border:0;border-top:1px solid var(--line-soft);margin:1rem 0">
+      <form method="post" action="/vms/<%= vm.id %>/resize" class="btn-row">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div style="flex:1;min-width:150px"><label for="disk_gb">Grow disk to (GB)</label><input id="disk_gb" type="number" name="disk_gb" min="<%= vm.disk_gb + 1 %>" value="<%= vm.disk_gb + 10 %>" <%= running ? 'disabled' : '' %>></div>
+        <button class="btn" type="submit" style="align-self:flex-end" <%= running ? 'disabled' : '' %>>Resize</button>
+      </form>
+      <% if (running) { %><p class="small muted" style="margin:.5rem 0 0">Shut the VM down to resize its disk. Disks can only grow.</p><% } %>
+      <% } else { %>
+      <dl class="spec">
+        <dt>CPU</dt><dd><%= vm.cpu %> cores</dd>
+        <dt>Memory</dt><dd><%= fmtMb(vm.ram_mb) %></dd>
+        <dt>Disk</dt><dd><%= vm.disk_gb %> GB</dd>
+      </dl>
+      <p class="small muted" style="margin:.6rem 0 0">Only an administrator can change this VM's CPU, memory or disk.</p>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="page-head" style="margin-bottom:.6rem"><h2 style="margin:0">Port forwarding</h2><span class="small muted">Reach this VM from the internet</span></div>
+  <% if (vm.net_mode !== 'user') { %>
+    <p class="muted" style="margin:0">This VM uses a bridge, so it already has its own address on the network<% if (vm.ip) { %> (<span class="mono"><%= vm.ip %></span>)<% } %>. Port forwarding is only needed for NAT VMs.</p>
+  <% } else if (!pfEnabled) { %>
+    <p class="muted" style="margin:0">Port forwarding is turned off. An administrator can enable it under <a href="/admin/settings">Settings</a>.</p>
+  <% } else { %>
+    <p class="small muted" style="margin-top:0">Forward a public address and port on the host to a port inside this NAT VM, then connect to it directly.</p>
+    <% if (forwards.length) { %>
+      <div class="fwd-list">
+        <% forwards.forEach(function (f) { %>
+          <% const host = f.host_ip || pfDefaultIp || 'your-server-ip'; %>
+          <div class="fwd-item">
+            <div class="fwd-main">
+              <div class="fwd-route"><span class="mono"><%= host %>:<%= f.host_port %></span> <span class="fwd-arrow">→</span> <span class="mono">VM:<%= f.vm_port %></span> <span class="tag"><%= f.proto.toUpperCase() %></span><% if (f.label) { %> <span class="small muted"><%= f.label %></span><% } %></div>
+              <div class="code small">ssh <%= vm.guest_user %>@<%= host %> -p <%= f.host_port %></div>
+            </div>
+            <form method="post" action="/vms/<%= vm.id %>/forwards/<%= f.id %>/delete">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button class="btn small danger" type="submit" data-confirm="Remove the forward for port <%= f.host_port %>?">Remove</button>
+            </form>
+          </div>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <p class="small muted">No port forwards yet.</p>
+    <% } %>
+    <form method="post" action="/vms/<%= vm.id %>/forwards" class="fwd-add">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="row">
+        <div class="field"><label for="fwd_host_ip">Public IP (blank = all)</label><input id="fwd_host_ip" name="host_ip" type="text" value="<%= pfDefaultIp %>" placeholder="203.0.113.10"></div>
+        <div class="field"><label for="fwd_host_port">Public port</label><input id="fwd_host_port" name="host_port" type="number" min="1" max="65535" required placeholder="2222"></div>
+        <div class="field"><label for="fwd_vm_port">VM port</label><input id="fwd_vm_port" name="vm_port" type="number" min="1" max="65535" required placeholder="22"></div>
+        <div class="field"><label for="fwd_proto">Protocol</label><select id="fwd_proto" name="proto"><option value="tcp">TCP</option><option value="udp">UDP</option></select></div>
+      </div>
+      <div class="row">
+        <div class="field" style="flex:1"><label for="fwd_label">Label (optional)</label><input id="fwd_label" name="label" type="text" maxlength="40" placeholder="SSH"></div>
+        <button class="btn primary" type="submit" style="align-self:flex-end">Add forward</button>
+      </div>
+    </form>
+    <% if (running) { %><p class="small muted" style="margin:.4rem 0 0">Changes to forwards apply the next time the VM starts.</p><% } %>
+  <% } %>
+</div>
+
+<div class="panel" style="margin-top:1rem">
+  <div class="page-head" style="margin-bottom:.6rem"><h2 style="margin:0">Boot and console log</h2><span class="small muted">Live serial output</span></div>
+  <pre class="log" id="serial-log" data-vm="<%= vm.id %>" tabindex="0" aria-label="Serial console log"></pre>
+</div>
+
+<div class="panel">
+  <details>
+    <summary>Reinstall</summary>
+    <p class="muted">Erases the disk and rebuilds the VM from an OS image. The name, resources and address stay the same.</p>
+    <form method="post" action="/vms/<%= vm.id %>/reinstall" class="form-narrow" data-confirm="This erases everything on <%= vm.name %>. Continue?">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="row">
+        <div class="field"><label for="ri_tpl">Operating system</label><select id="ri_tpl" name="template_id" required><% templates.forEach(function (t) { %><option value="<%= t.id %>" <%= t.id === vm.template_id ? 'selected' : '' %>><%= t.name %></option><% }) %></select></div>
+        <div class="field"><label for="ri_disk">Disk (GB)</label><input id="ri_disk" type="number" name="disk_gb" min="5" value="<%= vm.disk_gb %>" required></div>
+      </div>
+      <div class="row">
+        <div class="field"><label for="ri_user">Login user</label><input id="ri_user" type="text" name="guest_user" value="<%= vm.guest_user %>" required></div>
+        <div class="field"><label for="ri_pw">New password</label><input id="ri_pw" type="password" name="password" minlength="<%= user.role === 'admin' ? 3 : Math.max(3, parseInt(settings.min_password_length, 10) || 8) %>" required autocomplete="new-password"></div>
+      </div>
+      <div class="field"><label for="ri_key">SSH public key (optional)</label><textarea id="ri_key" name="ssh_key"><%= vm.ssh_key || '' %></textarea></div>
+      <% if (user.role === 'admin') { %>
+        <div class="row">
+          <div class="field"><label for="ri_mode">Network</label><select id="ri_mode" name="net_mode" data-net-mode><option value="user" <%= vm.net_mode === 'user' ? 'selected' : '' %>>NAT (no inbound ports)</option><option value="bridge" <%= vm.net_mode === 'bridge' ? 'selected' : '' %>>Bridge</option></select></div>
+        </div>
+        <div data-bridge-only>
+          <div class="row">
+            <div class="field"><label for="ri_bridge">Bridge</label><input id="ri_bridge" type="text" name="bridge" value="<%= vm.bridge || settings.default_bridge %>"></div>
+            <div class="field"><label for="ri_vlan">VLAN</label><input id="ri_vlan" type="number" name="vlan" min="1" max="4094" value="<%= vm.vlan || '' %>"></div>
+          </div>
+          <div class="row">
+            <div class="field"><label for="ri_ip">Static IPv4</label><input id="ri_ip" type="text" name="ip" value="<%= vm.ip || '' %>"></div>
+            <div class="field"><label for="ri_prefix">Prefix</label><input id="ri_prefix" type="number" name="prefix" min="1" max="32" value="<%= vm.prefix || 24 %>"></div>
+            <div class="field"><label for="ri_gw">Gateway</label><input id="ri_gw" type="text" name="gateway" value="<%= vm.gateway || '' %>"></div>
+          </div>
+          <div class="field"><label for="ri_dns">DNS servers</label><input id="ri_dns" type="text" name="dns" value="<%= vm.dns || settings.default_dns %>"></div>
+        </div>
+      <% } %>
+      <button class="btn danger" type="submit" data-busy="Reinstalling...">Erase and reinstall</button>
+    </form>
+  </details>
+</div>
+
+<div class="panel" style="border-color:#e2b8b0">
+  <h2>Delete this VM</h2>
+  <p class="muted">Permanently removes the VM and its disk. To confirm, type <strong class="mono"><%= vm.name %></strong>.</p>
+  <form method="post" action="/vms/<%= vm.id %>/delete" class="btn-row">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <input type="text" name="confirm_name" autocomplete="off" aria-label="Type the VM name to confirm" style="max-width:260px">
+    <button class="btn solid-danger" type="submit">Delete VM</button>
+  </form>
+</div>
+<%- include('partials/footer', { scripts: [{ src: '/static/js/logs.js' }, { src: '/static/js/vm-new.js' }] }) %>

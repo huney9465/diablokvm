@@ -1,0 +1,64 @@
+<%- include('partials/header') %>
+<div class="page-head">
+  <div>
+    <h1><%= vm.name %> files</h1>
+    <p class="sub">Files stored with this VM on its node. Upload up to <%= Math.round(maxBytes / (1024 * 1024 * 1024)) %> GB per file.</p>
+  </div>
+  <div class="btn-row">
+    <a class="btn" href="/vms/<%= vm.id %>">Back to VM</a>
+  </div>
+</div>
+
+<% if (error) { %><div class="note err" role="alert"><%= error %></div><% } %>
+
+<div class="grid two">
+  <div class="panel">
+    <h2>Files</h2>
+    <% if (!files.length) { %>
+      <p class="muted">No files yet. Upload one with the form on the right.</p>
+    <% } else { %>
+    <table>
+      <thead><tr><th>Name</th><th>Size</th><th>Uploaded</th><th></th></tr></thead>
+      <tbody>
+      <% files.forEach(function (f) { %>
+        <tr>
+          <td class="mono"><%= f.name %><% if (f.dir) { %> <span class="small muted">(folder)</span><% } %></td>
+          <td class="small"><%= f.dir ? '&mdash;' : (f.size >= 1048576 ? (f.size / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(f.size / 1024)) + ' KB') %></td>
+          <td class="small muted"><%= new Date(f.mtime).toISOString().slice(0, 16).replace('T', ' ') %></td>
+          <td class="actions">
+            <% if (!f.dir) { %><a class="btn small" href="/vms/<%= vm.id %>/files/download?name=<%= encodeURIComponent(f.name) %>">Download</a><% } %>
+            <form method="post" action="/vms/<%= vm.id %>/files/delete" style="display:inline">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <input type="hidden" name="name" value="<%= f.name %>">
+              <button class="btn small danger" type="submit" data-confirm="Delete <%= f.name %>? This cannot be undone.">Delete</button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table>
+    <% } %>
+  </div>
+
+  <div class="panel">
+    <h2>Upload a file</h2>
+    <form method="post" action="/vms/<%= vm.id %>/files/upload" enctype="multipart/form-data" id="vm-upload" data-no-lock>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field">
+        <label for="file">File (up to 1 GB)</label>
+        <input id="file" name="file" type="file" required>
+      </div>
+      <div class="field">
+        <label for="name">Save as (optional)</label>
+        <input id="name" name="name" type="text" maxlength="128" placeholder="keep the original name">
+      </div>
+      <button class="btn primary" type="submit">Upload</button>
+      <div class="upload-progress" id="up-progress" hidden>
+        <div class="upload-bar"><span id="up-fill"></span></div>
+        <span class="small muted" id="up-text">Uploading&hellip;</span>
+      </div>
+    </form>
+    <p class="small muted" style="margin:.75rem 0 0">Large files are streamed in 1 MB chunks, so a slow upload will not time out. Keep this tab open until it finishes.</p>
+  </div>
+</div>
+<%- include('partials/footer', { scripts: [{ src: '/static/js/vm-files.js' }] }) %>

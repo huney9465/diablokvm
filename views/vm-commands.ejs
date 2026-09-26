@@ -1,0 +1,25 @@
+<%- include('partials/header') %>
+<div class="page-head">
+  <div><h1><%= vm.name %> command history</h1><p class="sub">Commands run inside this VM from the panel's SSH and serial terminals. Visible to administrators only.</p></div>
+  <a class="btn" href="/vms/<%= vm.id %>">Back to VM</a>
+</div>
+<div class="panel flush">
+  <% if (!commands.length) { %>
+    <p class="muted" style="padding:1.2rem">No commands recorded yet. They appear here as soon as someone types a command in this VM's SSH or console terminal.</p>
+  <% } else { %>
+  <table>
+    <thead><tr><th>When (UTC)</th><th>User</th><th>Source</th><th>Command</th></tr></thead>
+    <tbody>
+    <% commands.forEach(function (c) { %>
+      <tr>
+        <td class="small muted"><%= c.created_at %></td>
+        <td class="small"><%= c.username || (c.user_id ? '#' + c.user_id : 'unknown') %></td>
+        <td><span class="tag <%= c.kind === 'ssh' ? '' : 'off' %>"><%= c.kind === 'ssh' ? 'SSH' : 'Console' %></span></td>
+        <td class="mono small"><%= c.command %></td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table>
+  <% } %>
+</div>
+<%- include('partials/footer', { scripts: [] }) %>

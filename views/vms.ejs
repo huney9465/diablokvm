@@ -1,0 +1,30 @@
+<%- include('partials/header') %>
+<div class="page-head">
+  <div><h1><%= title %></h1>
+    <% if (user.role === 'admin') { %><p class="sub"><%= all ? 'Showing every VM on this host.' : 'Showing only the VMs you own.' %> <a href="/vms<%= all ? '?scope=mine' : '' %>"><%= all ? 'Show only mine' : 'Show all' %></a></p><% } %>
+  </div>
+  <% if (user.role === 'admin') { %><a class="btn primary" href="/vms/new">Create VM</a><% } %>
+</div>
+<div class="panel flush">
+<table>
+  <thead><tr><th>Name</th><th>Status</th><th>Operating system</th><% if (all) { %><th>Node</th><% } %><th>CPU</th><th>Memory</th><th>Disk</th><th>Address</th><% if (all) { %><th>Owner</th><% } %><th></th></tr></thead>
+  <tbody>
+  <% vms.forEach(function (vm) { %>
+    <tr>
+      <td><span class="lamp <%= vm.status === 'running' ? 'running' : 'off' %>" data-lamp-for="<%= vm.id %>"></span><a href="/vms/<%= vm.id %>"><strong><%= vm.name %></strong></a></td>
+      <td><span class="state <%= vm.status %>" data-state-for="<%= vm.id %>"><%= vm.status === 'running' ? 'Running' : vm.status === 'unknown' ? 'Node offline' : 'Stopped' %></span></td>
+      <td><%= vm.template_name || 'Unknown' %></td>
+      <% if (all) { %><td><%= vm.node_name %></td><% } %>
+      <td><%= vm.cpu %></td>
+      <td><%= vm.ram_mb >= 1024 ? (vm.ram_mb / 1024).toFixed(vm.ram_mb % 1024 ? 1 : 0) + ' GB' : vm.ram_mb + ' MB' %></td>
+      <td><%= vm.disk_gb %> GB</td>
+      <td class="mono"><%= vm.net_mode === 'bridge' ? (vm.ip || 'DHCP') : 'NAT' %></td>
+      <% if (all) { %><td><%= vm.owner_name %></td><% } %>
+      <td class="actions"><% if (vm.status === 'running' && vm.sshx_server && !vm.sshx_cancelled) { %><a class="btn small" href="/vms/<%= vm.id %>/sshx" target="_blank" rel="noopener noreferrer" title="Opens in a new tab">SSHX</a> <% } %><a class="btn small" href="/vms/<%= vm.id %>">Manage</a></td>
+    </tr>
+  <% }) %>
+  <% if (!vms.length) { %><tr><td colspan="10"><div class="empty"><h2>No virtual machines</h2><p><%= user.role === 'admin' ? 'Pick an operating system, set the size and boot it in about a minute.' : 'Ask an administrator to create a VM for you.' %></p><% if (user.role === 'admin') { %><a class="btn primary" href="/vms/new">Create VM</a><% } %></div></td></tr><% } %>
+  </tbody>
+</table>
+</div>
+<%- include('partials/footer', { scripts: [] }) %>

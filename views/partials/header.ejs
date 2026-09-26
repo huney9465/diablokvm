@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="csrf" content="<%= csrfToken %>">
+<title><%= title %> - <%= settings.panel_name %></title>
+<link rel="stylesheet" href="/static/css/app.css?v=<%= assetVersion %>">
+<% if (typeof headExtra !== 'undefined') { %><%- headExtra %><% } %>
+</head>
+<%
+  const anim = settings.ui_animations !== '0';
+  const shape = settings.button_shape === 'pill' ? 'pill' : 'rounded';
+  const bgOn = settings.background_enabled === '1' && settings.background_image;
+  const bodyClass = [user ? 'app' : 'bare', anim ? 'anim' : '', 'shape-' + shape, bgOn ? 'has-bg' : ''].filter(Boolean).join(' ');
+  const creditText = settings.credit_text || 'Created by DiabloKVM';
+  const creditUrl = settings.credit_url || '';
+%>
+<body class="<%= bodyClass %>">
+<% if (bgOn) { %>
+<div class="bg-layer" aria-hidden="true"
+     style="background-image:url('<%= settings.background_image %>');--bg-dim:<%= settings.background_dim %>;--bg-blur:<%= settings.background_blur %>px;<%= settings.background_fixed === '1' ? 'background-attachment:fixed;' : '' %>"></div>
+<% } %>
+<% if (user) { %>
+<aside class="rail">
+  <div class="brand">
+    <% if (settings.logo_image) { %><img class="brand-logo" src="<%= settings.logo_image %>" alt=""><% } %>
+    <span class="brand-name"><%= settings.panel_name %></span>
+  </div>
+  <nav aria-label="Main">
+    <a href="/dashboard" <%- path === '/dashboard' ? 'aria-current="page"' : '' %>>Dashboard</a>
+    <a href="/vms" <%- path.startsWith('/vms') ? 'aria-current="page"' : '' %>>Virtual machines</a>
+    <a href="/profile" <%- path.startsWith('/profile') ? 'aria-current="page"' : '' %>>Profile and API keys</a>
+    <% if (user.role === 'admin') { %>
+      <h4>Administration</h4>
+      <a href="/admin/nodes" <%- path.startsWith('/admin/nodes') ? 'aria-current="page"' : '' %>>Nodes</a>
+      <a href="/admin/locations" <%- path.startsWith('/admin/locations') ? 'aria-current="page"' : '' %>>Locations</a>
+      <a href="/admin/users" <%- path.startsWith('/admin/users') ? 'aria-current="page"' : '' %>>Users</a>
+      <a href="/admin/templates" <%- path.startsWith('/admin/templates') ? 'aria-current="page"' : '' %>>OS templates</a>
+      <a href="/admin/isos" <%- path.startsWith('/admin/isos') ? 'aria-current="page"' : '' %>>ISO library</a>
+      <a href="/admin/settings" <%- path.startsWith('/admin/settings') ? 'aria-current="page"' : '' %>>Settings</a>
+    <% } %>
+  </nav>
+  <div class="who">
+    <strong><% if (user.logo_image) { %><img class="who-logo" src="<%= user.logo_image %>" alt=""><% } %><%= user.username %></strong>
+    <span><%= user.role === 'admin' ? 'Administrator' : 'User' %> &middot; #<%= user.id %></span>
+    <form method="post" action="/logout"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn small" type="submit">Sign out</button></form>
+  </div>
+  <div class="credit">
+    <% if (creditUrl) { %><a href="<%= creditUrl %>" target="_blank" rel="noopener noreferrer"><%= creditText %></a><% } else { %><span><%= creditText %></span><% } %>
+  </div>
+</aside>
+<main class="main">
+<% } %>
+<% flash.forEach(function (f) { %><div class="note <%= f.type %>" role="status"><%= f.message %></div><% }) %>

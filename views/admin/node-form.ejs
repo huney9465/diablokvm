@@ -1,0 +1,30 @@
+<%- include('../partials/header') %>
+<div class="page-head"><div><h1>Add node</h1><p class="sub">Create the node here, then set up the server with the command shown on the next screen.</p></div></div>
+<% if (error) { %><div class="note err" role="alert"><%= error %></div><% } %>
+<form method="post" action="/admin/nodes" class="panel form-narrow">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <input type="hidden" name="_form" value="node">
+  <fieldset>
+    <legend>Basic details</legend>
+    <div class="field"><label for="name">Name</label><input id="name" name="name" type="text" value="<%= n.name || '' %>" required maxlength="40" placeholder="Frankfurt 1"></div>
+    <div class="field"><label for="description">Description (optional)</label><input id="description" name="description" type="text" value="<%= n.description || '' %>" maxlength="200" placeholder="Rack 4, 64 GB RAM"></div>
+    <div class="field"><label for="location_id">Location</label>
+      <select id="location_id" name="location_id"><% locations.forEach(function (l) { %><option value="<%= l.id %>" <%= Number(n.location_id) === l.id ? 'selected' : '' %>><%= l.short %><%= l.long ? ' (' + l.long + ')' : '' %></option><% }) %></select>
+      <div class="hint">Groups nodes in the panel. Manage locations under <a href="/admin/locations">Locations</a>.</div></div>
+    <label class="check"><input type="checkbox" name="allow_users" value="1" <%= n.allow_users ? 'checked' : '' %>> Place regular users' VMs on this node</label>
+  </fieldset>
+  <fieldset>
+    <legend>Resources</legend>
+    <p class="small muted">Limits for the VMs this node may hold. Leave a limit at 0 to use what the node reports once it connects. Over-allocation lets you sell more than the limit: 0 means none, 50 means 150% of the limit, -1 means unlimited.</p>
+    <div class="row">
+      <div class="field"><label for="memory_mb">Memory limit (MB)</label><input id="memory_mb" name="memory_mb" type="number" min="0" value="<%= n.memory_mb || 0 %>"></div>
+      <div class="field"><label for="memory_over">Memory over-allocation (%)</label><input id="memory_over" name="memory_over" type="number" min="-1" max="1000" value="<%= n.memory_over || 0 %>"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label for="disk_gb">Disk limit (GB)</label><input id="disk_gb" name="disk_gb" type="number" min="0" value="<%= n.disk_gb || 0 %>"></div>
+      <div class="field"><label for="disk_over">Disk over-allocation (%)</label><input id="disk_over" name="disk_over" type="number" min="-1" max="1000" value="<%= n.disk_over || 0 %>"></div>
+    </div>
+  </fieldset>
+  <div class="btn-row"><button class="btn primary" type="submit" data-busy="Creating...">Create node</button><a class="btn" href="/admin/nodes">Cancel</a></div>
+</form>
+<%- include('../partials/footer', { scripts: [] }) %>

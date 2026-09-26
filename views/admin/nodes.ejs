@@ -1,0 +1,34 @@
+<%- include('../partials/header') %>
+<%
+const fmtMb = (mb) => mb >= 1024 ? (mb / 1024).toFixed(mb % 1024 ? 1 : 0) + ' GB' : mb + ' MB';
+const fmtB = (n) => { const u=['B','KB','MB','GB','TB']; const i=n?Math.min(4,Math.floor(Math.log(n)/Math.log(1024))):0; return (n/1024**i).toFixed(i?1:0)+' '+u[i]; };
+const lim = (v) => v == null ? 'unknown' : (v === Infinity ? 'unlimited' : null);
+%>
+<div class="page-head">
+  <div><h1>Nodes</h1><p class="sub">The servers that run your VMs. Extra nodes connect out to this panel, so they need no open ports.</p></div>
+  <div class="btn-row"><a class="btn" href="/admin/locations">Locations</a><a class="btn primary" href="/admin/nodes/new">Add node</a></div>
+</div>
+<div class="panel flush">
+<table>
+  <thead><tr><th>Node</th><th>Location</th><th>Status</th><th>VMs</th><th>Memory allocated</th><th>Disk allocated</th><th>Scheduling</th><th></th></tr></thead>
+  <tbody>
+  <% nodes.forEach(function (n) { %>
+    <tr>
+      <td><a href="/admin/nodes/<%= n.id %>"><strong><%= n.name %></strong></a><% if (n.id === 1) { %> <span class="tag off">This server</span><% } %>
+        <div class="small muted"><%= n.description || '' %><% if (n.stats && n.stats.hostname && n.id !== 1) { %> <span class="mono"><%= n.stats.hostname %></span><% } %></div></td>
+      <td class="small"><span class="mono"><%= n.location %></span></td>
+      <td><span class="lamp <%= n.online ? 'running' : 'off' %>"></span><span class="state <%= n.online ? 'running' : '' %>"><%= n.online ? 'Online' : 'Offline' %></span>
+        <% if (!n.online && n.last_seen) { %><div class="small muted">Last seen <%= new Date(n.last_seen).toISOString().replace('T', ' ').slice(0, 16) %> UTC</div><% } %>
+        <% if (!n.online && !n.last_seen && n.id !== 1) { %><div class="small muted">Never connected</div><% } %></td>
+      <td><%= n.cap.vms %></td>
+      <td class="small"><%= fmtMb(n.cap.usedMem) %><% if (n.cap.memLimit == null) { %> <span class="muted">of unknown</span><% } else if (n.cap.memLimit === Infinity) { %> <span class="muted">(no limit)</span><% } else { %> <span class="muted">of <%= fmtMb(n.cap.memLimit) %></span><br><meter min="0" max="<%= n.cap.memLimit %>" low="<%= n.cap.memLimit * 0.75 %>" high="<%= n.cap.memLimit * 0.95 %>" optimum="0" value="<%= Math.min(n.cap.usedMem, n.cap.memLimit) %>" style="width:110px"></meter><% } %></td>
+      <td class="small"><%= n.cap.usedDisk %> GB<% if (n.cap.diskLimit == null) { %> <span class="muted">of unknown</span><% } else if (n.cap.diskLimit === Infinity) { %> <span class="muted">(no limit)</span><% } else { %> <span class="muted">of <%= n.cap.diskLimit %> GB</span><br><meter min="0" max="<%= n.cap.diskLimit %>" low="<%= n.cap.diskLimit * 0.75 %>" high="<%= n.cap.diskLimit * 0.95 %>" optimum="0" value="<%= Math.min(n.cap.usedDisk, n.cap.diskLimit) %>" style="width:110px"></meter><% } %></td>
+      <td class="small"><%= !n.enabled ? 'Maintenance' : (n.allow_users ? 'Admins and users' : 'Admins only') %></td>
+      <td class="actions"><a class="btn small" href="/admin/nodes/<%= n.id %>">Manage</a></td>
+    </tr>
+  <% }) %>
+  </tbody>
+</table>
+</div>
+<div class="note info" style="margin-top:1rem"><strong>How nodes work.</strong> Each node keeps its own OS images and ISO files. A VM lives on the node it was created on and cannot be moved. Memory and disk limits (with optional over-allocation) are set per node.</div>
+<%- include('../partials/footer', { scripts: [] }) %>

@@ -1,0 +1,165 @@
+<%- include('../partials/header') %>
+<div class="page-head"><div><h1>Settings</h1><p class="sub">Branding, sign-in, networking and limits.</p></div></div>
+<form method="post" action="/admin/settings" class="form-narrow" enctype="multipart/form-data">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+  <div class="panel">
+    <h2>General</h2>
+    <div class="field"><label for="panel_name">Panel name</label><input id="panel_name" name="panel_name" type="text" maxlength="40" value="<%= s.panel_name %>"></div>
+    <div class="row">
+      <div class="field">
+        <label for="logo_file">Logo (upload)</label>
+        <input id="logo_file" name="logo_file" type="file" accept="image/png,image/jpeg,image/gif,image/webp">
+        <div class="hint">Shown at the top of the sidebar and on the sign-in page, in place of the old green dot.</div>
+      </div>
+      <div class="field">
+        <label for="logo_image">&hellip;or paste a logo URL</label>
+        <input id="logo_image" name="logo_image" type="text" maxlength="500" value="<%= s.logo_image %>" placeholder="https://example.com/logo.png">
+      </div>
+    </div>
+    <% if (s.logo_image) { %>
+      <div class="bg-preview" style="margin:.4rem 0 .8rem">
+        <span class="small muted">Current logo</span>
+        <img src="<%= s.logo_image %>" alt="Current logo preview" style="max-height:56px;max-width:220px">
+      </div>
+    <% } %>
+    <div class="switch-row">
+      <label class="switch" for="logo_clear"><input id="logo_clear" type="checkbox" name="logo_clear" value="1"><span class="track"></span><span class="switch-label"><strong>Remove logo</strong><span class="small">Go back to the plain panel name</span></span></label>
+    </div>
+    <div class="row">
+      <div class="field"><label for="credit_text">Credit line</label><input id="credit_text" name="credit_text" type="text" maxlength="80" value="<%= s.credit_text %>" placeholder="Created by DiabloKVM"><div class="hint">Shown at the bottom of the sidebar and on the sign-in pages.</div></div>
+      <div class="field"><label for="credit_url">Credit link (optional)</label><input id="credit_url" name="credit_url" type="url" maxlength="300" value="<%= s.credit_url %>" placeholder="https://example.com"></div>
+    </div>
+    <div class="switch-row">
+      <label class="switch" for="allow_registration"><input id="allow_registration" type="checkbox" name="allow_registration" value="1" <%= s.allow_registration === '1' ? 'checked' : '' %>><span class="track"></span><span class="switch-label"><strong>Self-registration</strong><span class="small">Let visitors create their own accounts</span></span></label>
+    </div>
+    <div class="switch-row">
+      <label class="switch" for="allow_discord_signup"><input id="allow_discord_signup" type="checkbox" name="allow_discord_signup" value="1" <%= s.allow_discord_signup === '1' ? 'checked' : '' %>><span class="track"></span><span class="switch-label"><strong>Auto-create on Discord sign-in</strong><span class="small">Make an account on the first Discord login</span></span></label>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Background</h2>
+    <p class="small muted" style="margin-top:0">Set a picture behind the whole panel. PNG, JPEG, GIF (animated GIFs work) or WebP up to 12 MB.</p>
+    <div class="switch-row">
+      <label class="switch" for="background_enabled"><input id="background_enabled" type="checkbox" name="background_enabled" value="1" <%= s.background_enabled === '1' ? 'checked' : '' %>><span class="track"></span><span class="switch-label"><strong>Show a background image</strong><span class="small">Image, GIF or URL below</span></span></label>
+    </div>
+    <div class="row" style="margin-top:.8rem">
+      <div class="field">
+        <label for="background_file">Upload image or GIF</label>
+        <input id="background_file" name="background_file" type="file" accept="image/png,image/jpeg,image/gif,image/webp">
+        <div class="hint">Uploading replaces the current file.</div>
+      </div>
+      <div class="field">
+        <label for="background_image">…or paste an image URL</label>
+        <input id="background_image" name="background_image" type="text" maxlength="500" value="<%= s.background_image %>" placeholder="https://example.com/wallpaper.gif">
+      </div>
+    </div>
+    <% if (s.background_image) { %>
+      <div class="bg-preview" style="margin:.4rem 0 .8rem">
+        <span class="small muted">Current background</span>
+        <img src="<%= s.background_image %>" alt="Current background preview">
+      </div>
+    <% } %>
+    <div class="row">
+      <div class="field"><label for="background_dim">Darken overlay (<%= s.background_dim %>%)</label><input id="background_dim" name="background_dim" type="range" min="0" max="90" value="<%= s.background_dim %>"><div class="hint">Higher keeps text readable over busy pictures.</div></div>
+      <div class="field"><label for="background_blur">Blur (px)</label><input id="background_blur" name="background_blur" type="number" min="0" max="30" value="<%= s.background_blur %>"></div>
+    </div>
+    <div class="switch-row">
+      <label class="switch" for="background_fixed"><input id="background_fixed" type="checkbox" name="background_fixed" value="1" <%= s.background_fixed === '1' ? 'checked' : '' %>><span class="track"></span><span class="switch-label"><strong>Fixed background</strong><span class="small">Keep the picture still while scrolling</span></span></label>
+    </div>
+    <div class="switch-row">
+      <label class="switch" for="background_clear"><input id="background_clear" type="checkbox" name="background_clear" value="1"><span class="track"></span><span class="switch-label"><strong>Remove background</strong><span class="small">Clear the current image</span></span></label>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Discord sign-in</h2>
+    <p class="small muted" style="margin-top:0">Create an application in the <a href="https://discord.com/developers/applications" target="_blank" rel="noopener noreferrer">Discord Developer Portal</a>, then paste the details here. Set the redirect URI in Discord to exactly the value below.</p>
+    <div class="switch-row">
+      <label class="switch" for="discord_enabled"><input id="discord_enabled" type="checkbox" name="discord_enabled" value="1" <%= s.discord_enabled === '1' ? 'checked' : '' %>><span class="track"></span><span class="switch-label"><strong>Enable Discord login</strong><span class="small">Shows “Continue with Discord” on the sign-in page</span></span></label>
+    </div>
+    <div class="discord-block <%= s.discord_enabled === '1' ? 'is-on' : '' %>">
+      <div class="field"><label for="discord_client_id">Client ID</label><input id="discord_client_id" name="discord_client_id" type="text" maxlength="100" value="<%= s.discord_client_id %>" autocomplete="off" placeholder="123456789012345678"></div>
+      <div class="field"><label for="discord_client_secret">Client secret</label><input id="discord_client_secret" name="discord_client_secret" type="password" maxlength="200" value="" autocomplete="new-password" placeholder="<%= s.discord_client_secret ? '•••••••• (leave blank to keep)' : '' %>"><div class="hint">Stored on the server and never shown again.</div></div>
+      <div class="field"><label for="discord_redirect_uri">Redirect URI (auth link)</label><input id="discord_redirect_uri" name="discord_redirect_uri" type="text" maxlength="300" value="<%= s.discord_redirect_uri %>" placeholder="https://panel.example.com/auth/discord/callback"><div class="hint">Must match the redirect added in the Discord portal exactly.</div></div>
+      <p class="small muted" style="margin:0">The login link users follow is <span class="mono">/auth/discord</span> on this panel.</p>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Passwords &amp; look</h2>
+    <div class="row">
+      <div class="field"><label for="min_password_length">Minimum VM login password</label><input id="min_password_length" name="min_password_length" type="number" min="3" max="128" value="<%= s.min_password_length %>"><div class="hint">Admins can always set a VM password as short as 3 characters. Regular users must meet this length.</div></div>
+      <div class="field"><label for="button_shape">Button shape</label><select id="button_shape" name="button_shape"><option value="rounded" <%= s.button_shape !== 'pill' ? 'selected' : '' %>>Rounded corners</option><option value="pill" <%= s.button_shape === 'pill' ? 'selected' : '' %>>Pill (fully curved)</option></select></div>
+    </div>
+    <div class="switch-row">
+      <label class="switch" for="ui_animations"><input id="ui_animations" type="checkbox" name="ui_animations" value="1" <%= s.ui_animations === '1' ? 'checked' : '' %>><span class="track"></span><span class="switch-label"><strong>Animations &amp; textures</strong><span class="small">Button textures, ripples, panel motion and reveal effects</span></span></label>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Port forwarding</h2>
+    <p class="small muted" style="margin-top:0">Lets a NAT VM be reached from the internet. Rules are set on each VM page and mapped to <span class="mono">hostfwd</span> entries.</p>
+    <div class="switch-row">
+      <label class="switch" for="port_forward_enabled"><input id="port_forward_enabled" type="checkbox" name="port_forward_enabled" value="1" <%= s.port_forward_enabled === '1' ? 'checked' : '' %>><span class="track"></span><span class="switch-label"><strong>Allow port forwarding</strong><span class="small">On NAT VMs</span></span></label>
+    </div>
+    <div class="field" style="margin-top:.8rem"><label for="port_forward_host_ip">Public host IP</label><input id="port_forward_host_ip" name="port_forward_host_ip" type="text" value="<%= s.port_forward_host_ip %>" placeholder="203.0.113.10"><div class="hint">The VPS address users connect to. Used as the default when adding a rule.</div></div>
+    <div class="switch-row" style="margin-top:.8rem">
+      <label class="switch" for="port_forward_auto"><input id="port_forward_auto" type="checkbox" name="port_forward_auto" value="1" <%= s.port_forward_auto === '1' ? 'checked' : '' %>><span class="track"></span><span class="switch-label"><strong>Auto port forwarding</strong><span class="small">Give every new NAT VM its own public ports</span></span></label>
+    </div>
+    <div class="row" style="margin-top:.8rem">
+      <div class="field" style="flex:1"><label for="port_forward_auto_ports">VM ports to expose</label><input id="port_forward_auto_ports" name="port_forward_auto_ports" type="text" value="<%= s.port_forward_auto_ports %>" placeholder="22,80,443"><div class="hint">Comma-separated ports inside the VM.</div></div>
+      <div class="field"><label for="port_forward_auto_from">Public port from</label><input id="port_forward_auto_from" name="port_forward_auto_from" type="number" min="1" max="65535" value="<%= s.port_forward_auto_from %>"></div>
+      <div class="field"><label for="port_forward_auto_to">to</label><input id="port_forward_auto_to" name="port_forward_auto_to" type="number" min="1" max="65535" value="<%= s.port_forward_auto_to %>"></div>
+    </div>
+    <p class="small muted" style="margin:0">Each new NAT VM automatically gets one free public port from the range above for every VM port listed (SSH, HTTP and HTTPS by default). Users can still add or remove forwards on the VM page.</p>
+  </div>
+
+  <div class="panel">
+    <h2>SSHX browser terminal</h2>
+    <div class="switch-row">
+      <label class="switch" for="sshx_enabled"><input id="sshx_enabled" type="checkbox" name="sshx_enabled" value="1" <%= s.sshx_enabled === '1' ? 'checked' : '' %>><span class="track"></span><span class="switch-label"><strong>Add SSHX to new VMs</strong><span class="small">Installed on every new or reinstalled VM</span></span></label>
+    </div>
+    <div class="field" style="margin-top:.8rem"><label for="sshx_server">SSHX server (optional)</label><input id="sshx_server" name="sshx_server" type="text" placeholder="https://sshx.io" value="<%= s.sshx_server %>"></div>
+    <p class="small muted" style="margin:0">Each VM installs the <span class="mono">sshx</span> client on first boot and shares a terminal that opens in a new tab from the VM page. It needs only outbound internet, so it works on NAT VMs. By default sessions go through the public sshx.io relay (end-to-end encrypted); set your own server above to keep them private. Existing VMs get SSHX when they are reinstalled. Nodes need the current agent.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Mining guard</h2>
+    <p class="small muted" style="margin-top:0">The panel samples each running VM's CPU use. When a VM stays above the threshold for long enough it is flagged, and can be suspended automatically.</p>
+    <div class="switch-row">
+      <label class="switch" for="mining_guard_enabled"><input id="mining_guard_enabled" type="checkbox" name="mining_guard_enabled" value="1" <%= s.mining_guard_enabled === '1' ? 'checked' : '' %>><span class="track"></span><span class="switch-label"><strong>Watch for mining</strong><span class="small">Flag VMs that look like they are mining</span></span></label>
+    </div>
+    <div class="switch-row" style="margin-top:.5rem">
+      <label class="switch" for="mining_auto_suspend"><input id="mining_auto_suspend" type="checkbox" name="mining_auto_suspend" value="1" <%= s.mining_auto_suspend === '1' ? 'checked' : '' %>><span class="track"></span><span class="switch-label"><strong>Auto-suspend flagged VMs</strong><span class="small">Pause the VM automatically (admins and owners can resume)</span></span></label>
+    </div>
+    <div class="row" style="margin-top:.8rem">
+      <div class="field"><label for="mining_cpu_threshold">CPU threshold (%)</label><input id="mining_cpu_threshold" name="mining_cpu_threshold" type="number" min="10" max="100" value="<%= s.mining_cpu_threshold %>"></div>
+      <div class="field"><label for="mining_suspend_minutes">Sustained for (minutes)</label><input id="mining_suspend_minutes" name="mining_suspend_minutes" type="number" min="1" max="1440" value="<%= s.mining_suspend_minutes %>"><div class="hint">How long the VM must stay above the threshold before it is flagged.</div></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Networking for regular users</h2>
+    <p class="small muted">Administrators choose networking per VM. Everyone else gets these defaults.</p>
+    <div class="row">
+      <div class="field"><label for="default_net_mode">Mode</label><select id="default_net_mode" name="default_net_mode"><option value="user" <%= s.default_net_mode === 'user' ? 'selected' : '' %>>NAT (internet access, no inbound ports)</option><option value="bridge" <%= s.default_net_mode === 'bridge' ? 'selected' : '' %>>Bridge with DHCP</option></select></div>
+      <div class="field"><label for="default_bridge">Bridge name</label><input id="default_bridge" name="default_bridge" type="text" value="<%= s.default_bridge %>"></div>
+    </div>
+    <div class="field"><label for="default_dns">Default DNS servers</label><input id="default_dns" name="default_dns" type="text" value="<%= s.default_dns %>"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Limits for regular users</h2>
+    <div class="row">
+      <div class="field"><label for="user_max_cpu">Max CPU cores per VM</label><input id="user_max_cpu" name="user_max_cpu" type="number" min="1" value="<%= s.user_max_cpu %>"></div>
+      <div class="field"><label for="user_max_ram_mb">Max memory per VM (MB)</label><input id="user_max_ram_mb" name="user_max_ram_mb" type="number" min="256" value="<%= s.user_max_ram_mb %>"></div>
+      <div class="field"><label for="user_max_disk_gb">Max disk per VM (GB)</label><input id="user_max_disk_gb" name="user_max_disk_gb" type="number" min="5" value="<%= s.user_max_disk_gb %>"></div>
+    </div>
+    <p class="small muted" style="margin:0">The number of VMs per person is set on each user.</p>
+  </div>
+
+  <button class="btn primary" type="submit">Save settings</button>
+</form>
+<%- include('../partials/footer', { scripts: [] }) %>

@@ -1,0 +1,31 @@
+{
+  "name": "kvmpanel",
+  "version": "1.1.0",
+  "description": "Self-hosted web panel for QEMU/KVM virtual machines with cloud-init, web console and SSH terminal",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "reset-admin": "node src/reset-admin.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@novnc/novnc": "^1.7.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^13.0.3",
+    "dotenv": "^18.0.1",
+    "ejs": "^6.0.1",
+    "express": "^5.2.1",
+    "express-session": "^1.19.0",
+    "helmet": "^8.3.0",
+    "multer": "^2.0.1",
+    "ssh2": "^1.17.0",
+    "ws": "^8.21.3"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  }
+}

@@ -1,0 +1,80 @@
+<%- include('partials/header') %>
+<%
+const fmtMb = (mb) => mb >= 1024 ? (mb / 1024).toFixed(mb % 1024 ? 1 : 0) + ' GB' : mb + ' MB';
+const fmtB = (n) => { const u=['B','KB','MB','GB','TB']; const i=n?Math.min(4,Math.floor(Math.log(n)/Math.log(1024))):0; return (n/1024**i).toFixed(i?1:0)+' '+u[i]; };
+const stateText = (s) => s === 'running' ? 'Running' : s === 'unknown' ? 'Node offline' : 'Stopped';
+%>
+<div class="page-head">
+  <div><h1>Dashboard</h1><p class="sub"><%= user.role === 'admin' ? 'All virtual machines and nodes.' : 'Your virtual machines.' %></p></div>
+  <% if (user.role === 'admin') { %><a class="btn primary" href="/vms/new">Create VM</a><% } %>
+</div>
+
+<% if (user.role === 'admin') {
+  const offline = nodes.filter((n) => !n.online);
+  const noKvm = nodes.filter((n) => n.online && n.stats && !n.stats.hasKvm && n.enabled);
+%>
+  <% if (offline.length) { %><div class="note warn" role="status"><%= offline.map((n) => n.name).join(', ') %> <%= offline.length === 1 ? 'is' : 'are' %> offline. VMs on <%= offline.length === 1 ? 'that node' : 'those nodes' %> show an unknown state until <%= offline.length === 1 ? 'it reconnects' : 'they reconnect' %>.</div><% } %>
+  <% if (noKvm.length) { %><div class="note warn"><%= noKvm.map((n) => n.name).join(', ') %> <%= noKvm.length === 1 ? 'has' : 'have' %> no <span class="mono">/dev/kvm</span>, so VMs there run without hardware acceleration and will be very slow.</div><% } %>
+<% } %>
+
+<div class="gauges">
+  <div class="gauge"><div class="n"><%= total %><% if (user.role !== 'admin') { %> <span class="muted small">of <%= quota %></span><% } %></div><div class="l">Virtual machines</div></div>
+  <div class="gauge"><div class="n"><%= running %></div><div class="l">Running now</div></div>
+  <div class="gauge"><div class="n"><%= usedCpu %></div><div class="l">vCPUs in use</div></div>
+  <div class="gauge"><div class="n"><%= fmtMb(usedRamMb) %></div><div class="l">Memory in use</div></div>
+  <% if (user.role === 'admin') { %><div class="gauge"><div class="n"><%= nodes.filter((n) => n.online).length %><span class="muted small"> of <%= nodes.length %></span></div><div class="l">Nodes online</div></div><% } %>
+</div>
+
+<% if (user.role === 'admin') { %>
+<div class="panel flush" style="margin-bottom:1rem">
+  <table>
+    <thead><tr><th>Node</th><th>VMs</th><th>CPU load</th><th>Memory</th><th>Storage</th><th class="right"></th></tr></thead>
+    <tbody>
+    <% nodes.forEach(function (n) { %>
+      <tr>
+        <td><span class="lamp <%= n.online ? 'running' : 'off' %>"></span><a href="/admin/nodes"><strong><%= n.name %></strong></a><% if (!n.enabled) { %> <span class="tag off">Disabled</span><% } %></td>
+        <td><%= n.vms %></td>
+        <% if (n.stats) { %>
+          <td><meter min="0" max="<%= n.stats.cpus %>" low="<%= n.stats.cpus * 0.6 %>" high="<%= n.stats.cpus * 0.85 %>" optimum="0" value="<%= n.stats.load.toFixed(2) %>" style="width:90px"></meter> <span class="small"><%= n.stats.load.toFixed(2) %> / <%= n.stats.cpus %></span></td>
+          <td><meter min="0" max="<%= n.stats.memTotal %>" low="<%= n.stats.memTotal * 0.7 %>" high="<%= n.stats.memTotal * 0.9 %>" optimum="0" value="<%= n.stats.memTotal - n.stats.memFree %>" style="width:90px"></meter> <span class="small"><%= fmtB(n.stats.memTotal - n.stats.memFree) %> of <%= fmtB(n.stats.memTotal) %></span></td>
+          <td class="small"><%= n.stats.diskTotal ? fmtB(n.stats.diskFree) + ' free of ' + fmtB(n.stats.diskTotal) : '' %></td>
+        <% } else { %><td colspan="3" class="small muted">Offline</td><% } %>
+        <td class="right small muted"><%= n.allocMb ? fmtMb(n.allocMb) + ' allocated' : '' %></td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table>
+</div>
+<% } %>
+
+<div class="grid <%= user.role === 'admin' ? 'two' : '' %>">
+  <div class="panel flush">
+    <table>
+      <thead><tr><th>Virtual machine</th><th>Status</th><th class="right">Resources</th></tr></thead>
+      <tbody>
+      <% vms.forEach(function (vm) { %>
+        <tr>
+          <td><span class="lamp <%= vm.status === 'running' ? 'running' : 'off' %>" data-lamp-for="<%= vm.id %>"></span><a href="/vms/<%= vm.id %>"><strong><%= vm.name %></strong></a><% if (user.role === 'admin') { %> <span class="muted small">(<%= vm.owner_name %>, <%= vm.node_name %>)</span><% } %></td>
+          <td><span class="state <%= vm.status %>" data-state-for="<%= vm.id %>"><%= stateText(vm.status) %></span></td>
+          <td class="right small"><%= vm.cpu %> vCPU, <%= fmtMb(vm.ram_mb) %>, <%= vm.disk_gb %> GB</td>
+        </tr>
+      <% }) %>
+      <% if (!vms.length) { %><tr><td colspan="3"><div class="empty"><h2>No VMs yet</h2><p><%= user.role === 'admin' ? 'Create your first VM to get started.' : 'Ask an administrator to create a VM for you.' %></p><% if (user.role === 'admin') { %><a class="btn primary" href="/vms/new">Create VM</a><% } %></div></td></tr><% } %>
+      </tbody>
+    </table>
+  </div>
+  <% if (user.role === 'admin') { %>
+  <div class="panel">
+    <h2>Recent activity</h2>
+    <% if (!activity.length) { %><p class="muted">Nothing has happened yet.</p><% } %>
+    <table>
+      <tbody>
+      <% activity.forEach(function (a) { %>
+        <tr><td class="small"><strong><%= a.username || 'system' %></strong> <span class="mono"><%= a.action %></span> <span class="muted"><%= a.target %></span></td><td class="small muted right nowrap"><%= a.created_at %></td></tr>
+      <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+</div>
+<%- include('partials/footer', { scripts: [] }) %>

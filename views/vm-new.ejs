@@ -1,0 +1,86 @@
+<%- include('partials/header') %>
+<div class="page-head"><div><h1>Create VM</h1><p class="sub">The VM is built from a cloud image and configured on first boot.</p></div></div>
+
+<% if (errors.length) { %><div class="note err" role="alert"><strong>Fix these and try again:</strong><ul><% errors.forEach(function (e) { %><li><%= e %></li><% }) %></ul></div><% } %>
+
+<% if (!templates.length) { %>
+  <div class="panel empty">
+    <h2>No operating systems are ready</h2>
+    <% if (user.role === 'admin') { %>
+      <p>Download an OS image to at least one online node first.</p><a class="btn primary" href="/admin/templates">Open OS templates</a>
+    <% } else { %>
+      <p>An administrator needs to download an OS image before VMs can be created.</p>
+    <% } %>
+  </div>
+<% } else { %>
+<form method="post" action="/vms" class="panel form-narrow">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <fieldset>
+    <legend>Machine</legend>
+    <div class="field"><label for="name">Name</label><input id="name" name="name" type="text" value="<%= values.name %>" required maxlength="63" placeholder="web-01"><div class="hint">Also used as the hostname inside the VM.</div></div>
+    <div class="field"><label for="template_id">Operating system</label>
+      <select id="template_id" name="template_id" required>
+        <option value="">Choose one</option>
+        <% templates.forEach(function (t) { %><option value="<%= t.id %>" data-nodes="<%= t.nodes.join(',') %>" <%= String(values.template_id) === String(t.id) ? 'selected' : '' %>><%= t.name %></option><% }) %>
+      </select></div>
+    <% if (user.role === 'admin' && nodeChoices.length) { %>
+    <div class="field"><label for="node_id">Node</label>
+      <select id="node_id" name="node_id">
+        <option value="">Choose automatically</option>
+        <% const byLoc = {}; nodeChoices.forEach(function (n) { (byLoc[n.location] = byLoc[n.location] || []).push(n); }); %>
+        <% Object.keys(byLoc).forEach(function (loc) { %><optgroup label="<%= loc %>"><% byLoc[loc].forEach(function (n) { %><option value="<%= n.id %>" <%= String(values.node_id) === String(n.id) ? 'selected' : '' %>><%= n.name %></option><% }) %></optgroup><% }) %>
+      </select>
+      <div class="hint">Automatic placement uses the online node with the most free memory. Only nodes that have the chosen OS are used.</div></div>
+    <% } %>
+    <div class="row">
+      <div class="field"><label for="cpu">CPU cores</label><input id="cpu" name="cpu" type="number" min="1" value="<%= values.cpu %>" required></div>
+      <div class="field"><label for="ram_mb">Memory (MB)</label><input id="ram_mb" name="ram_mb" type="number" min="256" step="256" value="<%= values.ram_mb %>" required></div>
+      <div class="field"><label for="disk_gb">Disk (GB)</label><input id="disk_gb" name="disk_gb" type="number" min="5" value="<%= values.disk_gb %>" required></div>
+    </div>
+    <% if (user.role !== 'admin') { %><p class="small muted">Your limits: <%= settings.user_max_cpu %> cores, <%= settings.user_max_ram_mb %> MB memory, <%= settings.user_max_disk_gb %> GB disk.</p><% } %>
+  </fieldset>
+
+  <fieldset>
+    <legend>Login</legend>
+    <div class="row">
+      <div class="field"><label for="guest_user">Username</label><input id="guest_user" name="guest_user" type="text" value="<%= values.guest_user %>" required pattern="[a-z_][a-z0-9_-]{0,31}"><div class="hint">Default <strong>root</strong> — you reach the VM directly as root over SSH and the serial console.</div></div>
+      <div class="field"><label for="password">Password</label><input id="password" name="password" type="password" minlength="<%= user.role === 'admin' ? 3 : Math.max(3, parseInt(settings.min_password_length, 10) || 8) %>" required autocomplete="new-password"><div class="hint">At least <%= user.role === 'admin' ? 3 : Math.max(3, parseInt(settings.min_password_length, 10) || 8) %> characters<%= user.role === 'admin' ? ' (admins may use short passwords)' : '' %>.</div></div>
+    </div>
+    <div class="field"><label for="ssh_key">SSH public key (optional)</label><textarea id="ssh_key" name="ssh_key" placeholder="ssh-ed25519 AAAA... you@laptop"><%= values.ssh_key %></textarea></div>
+  </fieldset>
+
+  <% if (user.role === 'admin') { %>
+  <fieldset>
+    <legend>Network</legend>
+    <div class="row">
+      <div class="field"><label for="net_mode">Mode</label>
+        <select id="net_mode" name="net_mode" data-net-mode>
+          <option value="user" <%= values.net_mode === 'user' ? 'selected' : '' %>>NAT (internet access, no inbound ports)</option>
+          <option value="bridge" <%= values.net_mode === 'bridge' ? 'selected' : '' %>>Bridge (own IP on the LAN)</option>
+        </select></div>
+    </div>
+    <div data-bridge-only>
+      <div class="row">
+        <div class="field"><label for="bridge">Bridge</label><input id="bridge" name="bridge" type="text" value="<%= values.bridge %>"></div>
+        <div class="field"><label for="vlan">VLAN ID (optional)</label><input id="vlan" name="vlan" type="number" min="1" max="4094" value="<%= values.vlan %>"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label for="ip">Static IPv4 (blank for DHCP)</label><input id="ip" name="ip" type="text" value="<%= values.ip %>" placeholder="192.168.1.50"></div>
+        <div class="field"><label for="prefix">Prefix length</label><input id="prefix" name="prefix" type="number" min="1" max="32" value="<%= values.prefix %>"></div>
+        <div class="field"><label for="gateway">Gateway</label><input id="gateway" name="gateway" type="text" value="<%= values.gateway %>"></div>
+      </div>
+      <div class="field"><label for="dns">DNS servers</label><input id="dns" name="dns" type="text" value="<%= values.dns %>"></div>
+    </div>
+  </fieldset>
+  <fieldset>
+    <legend>Ownership</legend>
+    <div class="field"><label for="owner_id">Owner</label>
+      <select id="owner_id" name="owner_id"><% owners.forEach(function (o) { %><option value="<%= o.id %>" <%= Number(values.owner_id) === o.id ? 'selected' : '' %>><%= o.username %></option><% }) %></select></div>
+    <label class="check"><input type="checkbox" name="autostart" value="1" <%= values.autostart ? 'checked' : '' %>> Start this VM when the panel starts</label>
+  </fieldset>
+  <% } %>
+
+  <div class="btn-row"><button class="btn primary" type="submit" data-busy="Building VM...">Create VM</button><a class="btn" href="/vms">Cancel</a></div>
+</form>
+<% } %>
+<%- include('partials/footer', { scripts: [{ src: '/static/js/vm-new.js' }] }) %>

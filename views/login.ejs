@@ -1,0 +1,23 @@
+<%- include('partials/header') %>
+<div class="auth-fx" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+<div class="glass-frame">
+  <div class="glass-bar" aria-hidden="true">
+    <span class="glass-dot"></span><span class="glass-dot"></span><span class="glass-dot"></span>
+    <span class="glass-bar-title"><%= settings.panel_name %> control panel</span>
+  </div>
+  <div class="panel card-auth">
+    <div class="brand-lg"><% if (settings.logo_image) { %><img class="brand-logo" src="<%= settings.logo_image %>" alt=""><% } %><%= settings.panel_name %></div>
+    <h1>Sign in</h1>
+    <% if (error) { %><div class="note err" role="alert" style="margin-top:1rem"><%= error %></div><% } %>
+    <form method="post" action="/login" style="margin-top:1rem" data-login>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field"><label for="username">Username</label><input id="username" name="username" type="text" autocomplete="username" required autofocus></div>
+      <div class="field"><label for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required></div>
+      <button class="btn primary" type="submit" style="width:100%;justify-content:center">Sign in</button>
+    </form>
+    <% if (discord) { %><div class="divider">or</div><a class="btn discord-btn" style="width:100%;justify-content:center" href="/auth/discord">Continue with Discord</a><% } %>
+    <% if (settings.allow_registration === '1') { %><p class="small muted" style="margin:1rem 0 0">No account yet? <a href="/register">Create one</a>.</p><% } %>
+  </div>
+</div>
+<div class="login-success" aria-hidden="true"><span class="login-success-mark"></span><span class="login-success-text">Signing you in…</span></div>
+<%- include('partials/footer') %>

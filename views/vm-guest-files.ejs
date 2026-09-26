@@ -1,0 +1,52 @@
+<%- include('partials/header') %>
+<%
+  // Build breadcrumbs from the current directory path.
+  const segs = String(dir || '/').split('/').filter(Boolean);
+  const crumbs = [{ name: '/', path: '/' }];
+  let acc = '';
+  for (const s of segs) { acc += '/' + s; crumbs.push({ name: s, path: acc }); }
+  const fmtSize = (n) => n >= 1073741824 ? (n / 1073741824).toFixed(1) + ' GB' : n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : n >= 1024 ? Math.round(n / 1024) + ' KB' : n + ' B';
+%>
+<div class="page-head">
+  <div>
+    <h1><%= vm.name %> disk files</h1>
+    <p class="sub">The real files on this VM's disk, read directly (read-only) with libguestfs &mdash; no login needed.</p>
+  </div>
+  <div class="btn-row">
+    <a class="btn" href="/vms/<%= vm.id %>/files">Host files</a>
+    <a class="btn" href="/vms/<%= vm.id %>">Back to VM</a>
+  </div>
+</div>
+
+<% if (error) { %><div class="note err" role="alert"><%= error %></div><% } %>
+
+<div class="panel">
+  <div class="crumbs" style="margin:0 0 .8rem">
+    <% crumbs.forEach(function (c, i) { %><% if (i) { %><span class="muted">/</span><% } %><a href="/vms/<%= vm.id %>/guest?path=<%= encodeURIComponent(c.path) %>" class="mono"><%= c.name %></a> <% }) %>
+  </div>
+  <% if (!error && !entries.length) { %>
+    <p class="muted">This directory is empty.</p>
+  <% } else if (!error) { %>
+  <table>
+    <thead><tr><th>Name</th><th>Type</th><th>Size</th><th></th></tr></thead>
+    <tbody>
+    <% entries.forEach(function (f) { %>
+      <% const full = (dir === '/' ? '' : dir) + '/' + f.name; %>
+      <tr>
+        <td class="mono">
+          <% if (f.dir) { %><a href="/vms/<%= vm.id %>/guest?path=<%= encodeURIComponent(full) %>"><%= f.name %></a>
+          <% } else { %><%= f.name %><% if (f.link) { %> <span class="small muted">&rarr; <%= f.link %></span><% } %><% } %>
+        </td>
+        <td class="small muted"><%= f.dir ? 'Folder' : (f.link ? 'Link' : 'File') %></td>
+        <td class="small"><%= f.dir ? '&mdash;' : fmtSize(f.size) %></td>
+        <td class="actions">
+          <% if (!f.dir) { %><a class="btn small" href="/vms/<%= vm.id %>/guest/download?path=<%= encodeURIComponent(full) %>">Download</a><% } %>
+        </td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table>
+  <% } %>
+  <p class="small muted" style="margin:.9rem 0 0">Read-only view. To change files, open the <a href="/vms/<%= vm.id %>/ssh">Terminal</a> and use the VM directly.</p>
+</div>
+<%- include('partials/footer', { scripts: [] }) %>
